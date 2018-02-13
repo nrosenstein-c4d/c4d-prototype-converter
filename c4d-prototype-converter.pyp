@@ -166,6 +166,47 @@ class BaseDialog(c4d.gui.GeDialog):
 # UserData to Description Resource Converter
 # ============================================================================
 
+class UserDataConverterInfo(object):
+  """
+  This object holds the information on how the description resource will
+  be generated.
+  """
+
+  def __init__(self, link, plugin_name, resource_name, icon_file, directory):
+    self.link = link
+    self.plugin_name = plugin_name
+    self.resource_name = resource_name
+    self.icon_file = icon_file
+    self.directory = directory
+
+  def autofill(self, default_plugin_name='My Plugin'):
+    if not self.plugin_name:
+      self.plugin_name = (self.link.GetName() if self.link else '')
+    if not self.plugin_name:
+      self.plugin_name = default_plugin_name
+    if not self.resource_name:
+      resource_prefix = 'O'
+      if self.link:
+        if self.link.CheckType(c4d.Obase): resource_prefix = 'O'
+        elif self.link.CheckType(c4d.Tbase): resource_prefix = 'T'
+        elif self.link.CheckType(c4d.Xbase): resource_prefix = 'X'
+        else: resource_prefix = ''
+      self.resource_name = re.sub('[^\w\d]+', '', self.plugin_name).lower()
+      self.resource_name = resource_prefix + self.resource_name
+
+  def filelist(self):
+    f = lambda s: s.format(**sys._getframe(1).f_locals)
+    parent_dir = self.directory or self.plugin_name
+    yield parent_dir
+    yield os.path.join(parent_dir, 'res', 'description', f('{self.resource_name}.h'))
+    yield os.path.join(parent_dir, 'res', 'description', f('{self.resource_name}.res'))
+    yield os.path.join(parent_dir, 'res', 'strings_us', 'description', f('{self.resource_name}.str'))
+    if self.icon_file:
+      suffix = os.path.splitext(self.icon_file)[1]
+      yield os.path.join(parent_dir, 'res', 'icons', f('{self.plugin_name}.{suffix}'))
+    yield os.path.join(parent_dir, 'res', 'c4d_symbols.h')
+
+
 class UserDataToDescriptionResourceConverterDialog(BaseDialog):
   """
   Implements the User Interface to convert an object's UserData to a
@@ -192,37 +233,40 @@ class UserDataToDescriptionResourceConverterDialog(BaseDialog):
   ID_FILELIST_GROUP = 1008
 
   def update_filelist(self):
-    resource_prefix = 'O'
-    plugin_name = self.GetString(self.ID_PLUGIN_NAME)
-    link = self.GetLink(self.ID_LINK)
-    if link:
-      if link.CheckType(c4d.Obase): resource_prefix = 'O'
-      elif link.CheckType(c4d.Tbase): resource_prefix = 'T'
-      elif link.CheckType(c4d.Xbase): resource_prefix = 'X'
-      else: resource_prefix = ''
-    if not plugin_name:
-      plugin_name = (link.GetName() if link else None) or 'My Plugin'
-    resource_name = self.GetString(self.ID_RESOURCE_NAME)
-    if not resource_name:
-      resource_name = resource_prefix + re.sub('[^\w\d]+', '', plugin_name).lower()
-    icon_file = self.GetFileSelectorString(self.ID_ICON_FILE)
-    parent_dir = os.path.basename(self.GetFileSelectorString(self.ID_DIRECTORY)) or plugin_name
+    info = UserDataConverterInfo(
+      link = self.GetLink(self.ID_LINK),
+      plugin_name = self.GetString(self.ID_PLUGIN_NAME),
+      resource_name = self.GetString(self.ID_RESOURCE_NAME),
+      icon_file = self.GetFileSelectorString(self.ID_ICON_FILE),
+      directory = self.GetFileSelectorString(self.ID_DIRECTORY)
+    )
+    info.autofill()
 
-    fmt = lambda s: s.format(**sys._getframe(1).f_locals)
+    files = info.filelist()
+    parent = next(files)
+    parent_base = os.path.basename(parent)
+    files = list(os.path.join(parent_base,
+      os.path.normpath(os.path.relpath(x, parent))) for x in files)
+    files.sort(key=str.lower)
+
+    # Expand the files by their parent directories.
+    i = 0
+    while i < len(files):
+      dirname = os.path.dirname(files[i]) + '!'
+      if dirname != '!' and dirname not in files:
+        files.insert(i, dirname)
+        i -= 1  # Make sure we process that directory name again.
+      i += 1
+
+    # Add indentation per separator instead of showing the path's parents.
+    for i in xrange(len(files)):
+      files[i] = '  ' * files[i].count(os.sep) + os.path.basename(files[i])
+      if files[i].endswith('!'):
+        files[i] = files[i][:-1] + '/'
+
     self.LayoutFlushGroup(self.ID_FILELIST_GROUP)
-    self.AddStaticText(0, c4d.BFH_LEFT, name=fmt('{parent_dir}/'))
-    self.AddStaticText(0, c4d.BFH_LEFT, name=fmt('  res/'))
-    self.AddStaticText(0, c4d.BFH_LEFT, name=fmt('    description/'))
-    self.AddStaticText(0, c4d.BFH_LEFT, name=fmt('      {resource_name}.h'))
-    self.AddStaticText(0, c4d.BFH_LEFT, name=fmt('      {resource_name}.res'))
-    self.AddStaticText(0, c4d.BFH_LEFT, name=fmt('    strings_us/'))
-    self.AddStaticText(0, c4d.BFH_LEFT, name=fmt('      description/'))
-    self.AddStaticText(0, c4d.BFH_LEFT, name=fmt('        {resource_name}.str'))
-    if icon_file:
-      suffix = os.path.splitext(icon_file)[1]
-      self.AddStaticText(0, c4d.BFH_LEFT, name=fmt('  icons/'))
-      self.AddStaticText(0, c4d.BFH_LEFT, name=fmt('    {plugin_name}.{suffix}'))
-    self.AddStaticText(0, c4d.BFH_LEFT, name=fmt('    c4d_symbols.h'))
+    for f in files:
+      self.AddStaticText(0, c4d.BFH_LEFT, name=f)
     self.LayoutChanged(self.ID_FILELIST_GROUP)
 
   # c4d.gui.GeDialog
