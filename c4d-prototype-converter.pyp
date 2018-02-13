@@ -19,6 +19,7 @@
 # SOFTWARE.
 
 import c4d
+import collections
 import os
 import re
 import sys
@@ -93,6 +94,13 @@ class BaseDialog(c4d.gui.GeDialog):
       self.__reverse_cache[param_id] = result
       return result
 
+  def SendCommand(self, param_id, bc=None):
+    if bc is None:
+      bc = c4d.BaseContainer()
+    bc.SetId(c4d.BFM_ACTION)
+    bc.SetInt32(c4d.BFM_ACTION_ID, param_id)
+    return self.Message(bc, c4d.BaseContainer())
+
   def __FileSelectorCallback(self, widget, event):
     if event['type'] == 'command' and event['param'] == widget['id.button']:
       flags = {
@@ -103,6 +111,7 @@ class BaseDialog(c4d.gui.GeDialog):
       path = c4d.storage.LoadDialog(flags=flags)
       if path:
         self.SetString(widget['id.string'], path)
+        self.SendCommand(widget['id.string'])
       return True
 
   def AddFileSelector(self, param_id, flags, type='load'):
@@ -203,8 +212,65 @@ class UserDataConverterInfo(object):
     yield os.path.join(parent_dir, 'res', 'strings_us', 'description', f('{self.resource_name}.str'))
     if self.icon_file:
       suffix = os.path.splitext(self.icon_file)[1]
-      yield os.path.join(parent_dir, 'res', 'icons', f('{self.plugin_name}.{suffix}'))
+      yield os.path.join(parent_dir, 'res', 'icons', f('{self.plugin_name}{suffix}'))
     yield os.path.join(parent_dir, 'res', 'c4d_symbols.h')
+
+
+def path_parents(path):
+  """
+  A generator that returns *path* and all its parent directories.
+  """
+
+  yield path
+  prev = None
+  while True:
+    path = os.path.dirname(path)
+    if not path or prev == path: break  # Top of relative path or of filesystem
+    yield path
+    prev = path
+
+
+def file_tree(files, parent=None, flat=False):
+  """
+  Produces a tree structure from a list of filenames. Returns a list of the
+  root entries. If *flat* is set to #True, the returned list contains a flat
+  version of all entries in the tree.
+  """
+
+  Entry = collections.namedtuple('Entry', 'path isdir sub parent')
+  entries = {}
+
+  files = (os.path.normpath(x) for x in files)
+  if parent:
+    files = (os.path.relpath(x, parent) for x in files)
+
+  if flat:
+    order = []
+  for filename in files:
+    parent = None
+    for path in reversed(list(path_parents(filename))):
+      entry = entries.get(path)
+      if not entry:
+        entry = Entry(path, path!=filename, {}, parent)  # TODO: Use weak references -- but can't be used with tuples/namedtuples
+        entries[path] = entry
+        base = os.path.basename(path)
+        if parent:
+          parent.sub[base] = entries
+      parent = entry
+    if flat:
+      order.append(entry)
+
+  if flat:
+    result = []
+    for entry in order:
+      index = len(result)
+      while entry:
+        if entry in result: break
+        result.insert(index, entry)
+        entry = entry.parent
+    return result
+  else:
+    return [x for x in entries.values() if not x.parent]
 
 
 class UserDataToDescriptionResourceConverterDialog(BaseDialog):
@@ -245,28 +311,21 @@ class UserDataToDescriptionResourceConverterDialog(BaseDialog):
     files = info.filelist()
     parent = next(files)
     parent_base = os.path.basename(parent)
-    files = list(os.path.join(parent_base,
-      os.path.normpath(os.path.relpath(x, parent))) for x in files)
-    files.sort(key=str.lower)
-
-    # Expand the files by their parent directories.
-    i = 0
-    while i < len(files):
-      dirname = os.path.dirname(files[i]) + '!'
-      if dirname != '!' and dirname not in files:
-        files.insert(i, dirname)
-        i -= 1  # Make sure we process that directory name again.
-      i += 1
-
-    # Add indentation per separator instead of showing the path's parents.
-    for i in xrange(len(files)):
-      files[i] = '  ' * files[i].count(os.sep) + os.path.basename(files[i])
-      if files[i].endswith('!'):
-        files[i] = files[i][:-1] + '/'
+    #files = list(os.path.join(parent_base,
+    #  os.path.normpath(os.path.relpath(x, parent))) for x in files)
+    #files.sort(key=str.lower)
 
     self.LayoutFlushGroup(self.ID_FILELIST_GROUP)
-    for f in files:
-      self.AddStaticText(0, c4d.BFH_LEFT, name=f)
+    for entry in file_tree(files, flat=True):
+      depth = 0
+      parent = entry.parent
+      while parent:
+        depth += 1
+        parent = parent.parent
+      name = '  ' * depth + os.path.basename(entry.path)
+      if entry.isdir:
+        name += '/'
+      self.AddStaticText(0, c4d.BFH_LEFT, name=name)
     self.LayoutChanged(self.ID_FILELIST_GROUP)
 
   # c4d.gui.GeDialog
@@ -308,7 +367,7 @@ class UserDataToDescriptionResourceConverterDialog(BaseDialog):
     # Check if anything changed that would have an influence on the filelist.
     if self.ReverseMapId(param_id)[1] in (
         self.ID_PLUGIN_NAME, self.ID_RESOURCE_NAME, self.ID_DIRECTORY,
-        self.ID_LINK):
+        self.ID_ICON_FILE, self.ID_LINK):
       self.update_filelist()
     return True
 
