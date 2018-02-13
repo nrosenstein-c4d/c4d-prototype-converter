@@ -19,6 +19,10 @@
 # SOFTWARE.
 
 import c4d
+import os
+import re
+import sys
+
 
 # ============================================================================
 # Helper Classes
@@ -55,12 +59,39 @@ class BaseDialog(c4d.gui.GeDialog):
   def __init__(self):
     super(BaseDialog, self).__init__()
     self.__widgets = {}
+    self.__reverse_cache = {}
     self.__idcounter = 9000000
 
   def AllocId(self):
+    """
+    Allocates a new ID. Used for widgets that require more than one real widget.
+    """
+
     result = self.__idcounter
     self.__idcounter += 1
     return result
+
+  def ReverseMapId(self, param_id):
+    """
+    Reverse-maps a real parameter ID to the ID of a virtual widget. If there
+    is no virtual widget that allocated *param_id*, returns (None, param_id).
+    If a widget has been found that uses *param_id*, returns (name, widget_id).
+    """
+
+    try:
+      return self.__reverse_cache[param_id]
+    except KeyError:
+      result = None
+      for widget_id, widget in self.__widgets.items():
+        for key in widget:
+          if key.startswith('id.') and widget[key] == param_id:
+            result = key[3:], widget_id
+            break
+        if result: break
+      if not result:
+        result = (None, param_id)
+      self.__reverse_cache[param_id] = result
+      return result
 
   def __FileSelectorCallback(self, widget, event):
     if event['type'] == 'command' and event['param'] == widget['id.button']:
@@ -158,6 +189,43 @@ class UserDataToDescriptionResourceConverterDialog(BaseDialog):
   ID_LINK = 1005
   ID_CREATE = 1006
   ID_CANCEL = 1007
+  ID_FILELIST_GROUP = 1008
+
+  def update_filelist(self):
+    resource_prefix = 'O'
+    plugin_name = self.GetString(self.ID_PLUGIN_NAME)
+    link = self.GetLink(self.ID_LINK)
+    if link:
+      if link.CheckType(c4d.Obase): resource_prefix = 'O'
+      elif link.CheckType(c4d.Tbase): resource_prefix = 'T'
+      elif link.CheckType(c4d.Xbase): resource_prefix = 'X'
+      else: resource_prefix = ''
+    if not plugin_name:
+      plugin_name = (link.GetName() if link else None) or 'My Plugin'
+    resource_name = self.GetString(self.ID_RESOURCE_NAME)
+    if not resource_name:
+      resource_name = resource_prefix + re.sub('[^\w\d]+', '', plugin_name).lower()
+    icon_file = self.GetFileSelectorString(self.ID_ICON_FILE)
+    parent_dir = os.path.basename(self.GetFileSelectorString(self.ID_DIRECTORY)) or plugin_name
+
+    fmt = lambda s: s.format(**sys._getframe(1).f_locals)
+    self.LayoutFlushGroup(self.ID_FILELIST_GROUP)
+    self.AddStaticText(0, c4d.BFH_LEFT, name=fmt('{parent_dir}/'))
+    self.AddStaticText(0, c4d.BFH_LEFT, name=fmt('  res/'))
+    self.AddStaticText(0, c4d.BFH_LEFT, name=fmt('    description/'))
+    self.AddStaticText(0, c4d.BFH_LEFT, name=fmt('      {resource_name}.h'))
+    self.AddStaticText(0, c4d.BFH_LEFT, name=fmt('      {resource_name}.res'))
+    self.AddStaticText(0, c4d.BFH_LEFT, name=fmt('    strings_us/'))
+    self.AddStaticText(0, c4d.BFH_LEFT, name=fmt('      description/'))
+    self.AddStaticText(0, c4d.BFH_LEFT, name=fmt('        {resource_name}.str'))
+    if icon_file:
+      suffix = os.path.splitext(icon_file)[1]
+      self.AddStaticText(0, c4d.BFH_LEFT, name=fmt('  icons/'))
+      self.AddStaticText(0, c4d.BFH_LEFT, name=fmt('    {plugin_name}.{suffix}'))
+    self.AddStaticText(0, c4d.BFH_LEFT, name=fmt('    c4d_symbols.h'))
+    self.LayoutChanged(self.ID_FILELIST_GROUP)
+
+  # c4d.gui.GeDialog
 
   def CreateLayout(self):
     self.SetTitle('UserData to Description Resource (.res) Converter')
@@ -184,20 +252,20 @@ class UserDataToDescriptionResourceConverterDialog(BaseDialog):
     self.GroupEnd()  # } MAIN/LEFT/BUTTONS
     self.GroupEnd()  # } MAIN/LEFT
     self.AddSeparatorV(0, c4d.BFV_SCALEFIT)
-    self.GroupBegin(0, c4d.BFH_RIGHT | c4d.BFV_SCALEFIT, 1, 0) # MAIN/RIGHT {
-    # TODO
-    self.AddStaticText(0, c4d.BFH_LEFT, name='AtomArray/')
-    self.AddStaticText(0, c4d.BFH_LEFT, name='  res/')
-    self.AddStaticText(0, c4d.BFH_LEFT, name='    description/')
-    self.AddStaticText(0, c4d.BFH_LEFT, name='      oatomarray.h')
-    self.AddStaticText(0, c4d.BFH_LEFT, name='      oatomarray.res')
-    self.AddStaticText(0, c4d.BFH_LEFT, name='    strings_us/')
-    self.AddStaticText(0, c4d.BFH_LEFT, name='      description/')
-    self.AddStaticText(0, c4d.BFH_LEFT, name='        oatomarray.str')
-    self.AddStaticText(0, c4d.BFH_LEFT, name='    AtomArrayObject.tif')
-    self.AddStaticText(0, c4d.BFH_LEFT, name='    c4d_symbols.h')
+    self.GroupBegin(self.ID_FILELIST_GROUP, c4d.BFH_RIGHT | c4d.BFV_SCALEFIT, 1, 0) # MAIN/RIGHT {
     self.GroupEnd()  # } MAIN/RIGHT
     self.GroupEnd()  # } MAIN
+    self.update_filelist()
+    return True
+
+  def Command(self, param_id, bc):
+    if BaseDialog.Command(self, param_id, bc):
+      return True
+    # Check if anything changed that would have an influence on the filelist.
+    if self.ReverseMapId(param_id)[1] in (
+        self.ID_PLUGIN_NAME, self.ID_RESOURCE_NAME, self.ID_DIRECTORY,
+        self.ID_LINK):
+      self.update_filelist()
     return True
 
 
