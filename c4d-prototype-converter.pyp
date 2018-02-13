@@ -247,16 +247,16 @@ def file_tree(files, parent=None, flat=False):
   if flat:
     order = []
   for filename in files:
-    parent = None
+    parent_entry = None
     for path in reversed(list(path_parents(filename))):
       entry = entries.get(path)
       if not entry:
-        entry = Entry(path, path!=filename, {}, parent)  # TODO: Use weak references -- but can't be used with tuples/namedtuples
+        entry = Entry(path, path!=filename, {}, parent_entry)  # TODO: Use weak references -- but can't be used with tuples/namedtuples
         entries[path] = entry
         base = os.path.basename(path)
-        if parent:
-          parent.sub[base] = entries
-      parent = entry
+        if parent_entry:
+          parent_entry.sub[base] = entries
+      parent_entry = entry
     if flat:
       order.append(entry)
 
@@ -309,14 +309,10 @@ class UserDataToDescriptionResourceConverterDialog(BaseDialog):
     info.autofill()
 
     files = info.filelist()
-    parent = next(files)
-    parent_base = os.path.basename(parent)
-    #files = list(os.path.join(parent_base,
-    #  os.path.normpath(os.path.relpath(x, parent))) for x in files)
-    #files.sort(key=str.lower)
+    parent = os.path.dirname(next(files))
 
     self.LayoutFlushGroup(self.ID_FILELIST_GROUP)
-    for entry in file_tree(files, flat=True):
+    for entry in file_tree(files, parent=parent, flat=True):
       depth = 0
       parent = entry.parent
       while parent:
@@ -356,6 +352,7 @@ class UserDataToDescriptionResourceConverterDialog(BaseDialog):
     self.GroupEnd()  # } MAIN/LEFT
     self.AddSeparatorV(0, c4d.BFV_SCALEFIT)
     self.GroupBegin(self.ID_FILELIST_GROUP, c4d.BFH_RIGHT | c4d.BFV_SCALEFIT, 1, 0) # MAIN/RIGHT {
+    self.GroupBorderSpace(4, 4, 4, 4)
     self.GroupEnd()  # } MAIN/RIGHT
     self.GroupEnd()  # } MAIN
     self.update_filelist()
