@@ -172,12 +172,36 @@ class BaseDialog(c4d.gui.GeDialog):
     return False
 
 
+class HashableDescid(object):
+
+  def __init__(self, descid):
+    self.descid = descid
+
+  def __hash__(self):
+    return hash(tuple(
+      (l.id, l.dtype, l.creator)
+      for l in (
+        self.descid[i] for i in xrange(self.descid.GetDepth())
+      )
+    ))
+
+  def __eq__(self, other):
+    if isinstance(other, HashableDescid):
+      return other.descid == self.descid
+    return False
+
+  def __ne__(self, other):
+    return not (self == other)
+
+
 def makedirs(path, raise_on_exists=False):
   try:
     os.makedirs(path)
   except OSError as exc:
     if raise_on_exists or exc.errno != errno.EEXIST:
       raise
+
+
 
 # ============================================================================
 # UserData to Description Resource Converter
@@ -194,9 +218,10 @@ class UserDataConverter(object):
     def __init__(self, prefix):
       self.curr_id = 1000
       self.symbols = collections.OrderedDict()
+      self.descid_to_symbol = {}
       self.prefix = prefix
 
-    def get_unique_symbol(self, name, value=None):
+    def get_unique_symbol(self, descid, name, value=None):
       base = self.prefix + re.sub('[^\w\d_]', '_', name).upper().rstrip('_')
       index = 0
       while True:
@@ -207,6 +232,8 @@ class UserDataConverter(object):
         value = self.curr_id
         self.curr_id += 1
       self.symbols[symbol] = value
+      if descid is not None:
+        self.descid_to_symbol[HashableDescid(descid)] = symbol
       return symbol, value
 
   def __init__(self, link, plugin_name, plugin_id, resource_name,
@@ -278,6 +305,17 @@ class UserDataConverter(object):
     ud = self.link.GetUserDataContainer()
     symbol_map = self.SymbolMap(self.symbol_prefix)
 
+    # Render the symbols to the description header. This will also
+    # initialize our symbols_map.
+    makedirs(os.path.dirname(files['header']))
+    with open(files['header'], 'w') as fp:
+      fp.write('#pragma once\nenum {\n')
+      if self.plugin_id:
+        fp.write(self.indent + '{self.resource_name} = {self.plugin_id},\n'.format(self=self))
+      for descid, bc in ud:
+        self.render_symbol(fp, descid, bc, symbol_map)
+      fp.write('};\n')
+
     makedirs(os.path.dirname(files['description']))
     with open(files['description'], 'w') as fp:
       fp.write('CONTAINER {self.resource_name} {{\n'.format(self=self))
@@ -297,15 +335,6 @@ class UserDataConverter(object):
       # TODO: Render UserData parameters that are not inside the main UserData group
       fp.write('}\n')
 
-    makedirs(os.path.dirname(files['header']))
-    with open(files['header'], 'w') as fp:
-      fp.write('#pragma once\nenum {\n')
-      if self.plugin_id:
-        fp.write(self.indent + '{self.resource_name} = {self.plugin_id},\n'.format(self=self))
-      for descid, bc in ud:
-        self.render_symbol(fp, descid, bc, symbol_map)
-      fp.write('};\n')
-
     makedirs(os.path.dirname(files['strings_us']))
     with open(files['strings_us'], 'w') as fp:
       fp.write('STRINGTABLE {self.resource_name} {{\n'.format(self=self))
@@ -323,13 +352,15 @@ class UserDataConverter(object):
     if descid[-1].dtype == c4d.DTYPE_GROUP:
       name += '_GROUP'
 
-    sym, value = symbol_map.get_unique_symbol(name)
+    sym, value = symbol_map.get_unique_symbol(descid, name)
     fp.write(self.indent + '{} = {},\n'.format(sym, value))
     children = bc.GetContainerInstance(c4d.DESC_CYCLE)
     if children:
       for value, name in children:
-        child_sym = symbol_map.get_unique_symbol(sym + '_' + name, value)[0]
+        child_sym = symbol_map.get_unique_symbol(None, sym + '_' + name, value)[0]
         fp.write(self.indent * 2 + '{} = {},\n'.format(child_sym, value))
+
+    return sym
 
 
 def path_parents(path):
