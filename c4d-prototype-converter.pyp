@@ -20,13 +20,14 @@
 
 import c4d
 import collections
+import errno
 import os
 import re
 import sys
 
 
 # ============================================================================
-# Helper Classes
+# Helpers
 # ============================================================================
 
 class DialogOpenerCommand(c4d.plugins.CommandData):
@@ -171,22 +172,33 @@ class BaseDialog(c4d.gui.GeDialog):
     return False
 
 
+def makedirs(path, raise_on_exists=False):
+  try:
+    os.makedirs(path)
+  except OSError as exc:
+    if raise_on_exists or exc.errno != errno.EEXIST:
+      raise
+
 # ============================================================================
 # UserData to Description Resource Converter
 # ============================================================================
 
-class UserDataConverterInfo(object):
+class UserDataConverter(object):
   """
   This object holds the information on how the description resource will
   be generated.
   """
 
-  def __init__(self, link, plugin_name, resource_name, icon_file, directory):
+  def __init__(self, link, plugin_name, plugin_id, resource_name,
+               symbol_prefix, icon_file, directory):
     self.link = link
     self.plugin_name = plugin_name
+    self.plugin_id = plugin_id
     self.resource_name = resource_name
+    self.symbol_prefix = symbol_prefix
     self.icon_file = icon_file
     self.directory = directory
+    self.indent = '  '
 
   def autofill(self, default_plugin_name='My Plugin'):
     if not self.plugin_name:
@@ -203,17 +215,82 @@ class UserDataConverterInfo(object):
       self.resource_name = re.sub('[^\w\d]+', '', self.plugin_name).lower()
       self.resource_name = resource_prefix + self.resource_name
 
-  def filelist(self):
+  def files(self):
     f = lambda s: s.format(**sys._getframe(1).f_locals)
+    j = os.path.join
     parent_dir = self.directory or self.plugin_name
-    yield parent_dir
-    yield os.path.join(parent_dir, 'res', 'description', f('{self.resource_name}.h'))
-    yield os.path.join(parent_dir, 'res', 'description', f('{self.resource_name}.res'))
-    yield os.path.join(parent_dir, 'res', 'strings_us', 'description', f('{self.resource_name}.str'))
+    result = {
+      'directory': parent_dir,
+      'c4d_symbols': j(parent_dir, 'res', 'c4d_symbols.h'),
+      'header': j(parent_dir, 'res', 'description', f('{self.resource_name}.h')),
+      'description': j(parent_dir, 'res', 'description', f('{self.resource_name}.res')),
+      'strings_us': j(parent_dir, 'res', 'strings_us', 'description', f('{self.resource_name}.str'))
+    }
     if self.icon_file:
       suffix = os.path.splitext(self.icon_file)[1]
-      yield os.path.join(parent_dir, 'res', 'icons', f('{self.plugin_name}{suffix}'))
-    yield os.path.join(parent_dir, 'res', 'c4d_symbols.h')
+      result['icon'] = j(parent_dir, 'res', 'icons', f('{self.plugin_name}{suffix}'))
+    return result
+
+  def create(self, overwrite=False):
+    if not self.directory:
+      raise RuntimeError('UserDataConverter.directory must be set')
+    if not self.link:
+      raise RuntimeError('UserDataConverter.link must be set')
+    if self.icon_file and not os.path.isfile(self.icon_file):
+      raise IOError('File "{}" does not exist'.format(self.icon_file))
+
+    files = self.files()
+    if not overwrite:
+      for k in ('header', 'description', 'icon', 'strings_us'):
+        v = files.get(k)
+        if not v: continue
+        if os.path.exists(v):
+          raise IOError('File "{}" already exists'.format(v))
+
+    makedirs(os.path.dirname(files['c4d_symbols']))
+    if not os.path.isfile(files['c4d_symbols']):
+      makedirs(os.path.dirname(files['c4d_symbols']))
+      with open(files['c4d_symbols'], 'w') as fp:
+        fp.write('#pragma once\nenum {\n};\n')
+
+    # TODO: Collect resource symbol information from userdata.
+
+    makedirs(os.path.dirname(files['header']))
+    with open(files['header'], 'w') as fp:
+      fp.write('#pragma once\nenum {\n')
+      if self.plugin_id:
+        fp.write(self.indent + '{self.resource_name} = {self.plugin_id},\n'.format(self=self))
+      # TODO: Render UserData symbols
+      fp.write('};\n')
+
+    with open(files['description'], 'w') as fp:
+      fp.write('CONTAINER {self.resource_name} {{\n'.format(self=self))
+      for base, propgroup in [
+          ('Obase', 'ID_OBJECTPROPERTIES'), ('Tbase', 'ID_TAGPROPERTIES'),
+          ('Xbase', 'ID_SHADERPROPERTIES'), ('Mbase', 'ID_MATERIALPROPERTIES')]:
+        if self.link.CheckType(getattr(c4d, base)):
+          fp.write(self.indent + 'INCLUDE {base};\n'.format(base=base))
+          break
+      else:
+        propgroup = None
+      fp.write(self.indent + 'NAME {self.resource_name};\n'.format(self=self))
+      if propgroup:
+        fp.write(self.indent + 'GROUP {0} {{\n'.format(propgroup))
+        # TODO: Render UserData parameters
+        fp.write(self.indent + '}\n')
+      # TODO: Render UserData parameters that are not inside the main UserData group
+      fp.write('}\n')
+
+    makedirs(os.path.dirname(files['strings_us']))
+    with open(files['strings_us'], 'w') as fp:
+      fp.write('STRINGTABLE {self.resource_name} {{\n'.format(self=self))
+      fp.write('{self.indent}{self.resource_name} "{self.plugin_name}";\n'.format(self=self))
+      # TODO: Render UserData symbols
+      fp.write('}\n')
+
+    if self.icon_file:
+      makedirs(os.path.dirname(files['icon']))
+      shutil.copy(self.icon_file, files['icon'])
 
 
 def path_parents(path):
@@ -277,39 +354,38 @@ class UserDataToDescriptionResourceConverterDialog(BaseDialog):
   """
   Implements the User Interface to convert an object's UserData to a
   Cinema 4D description resource.
-
-                               MAIN
-  /----------------------------------------------------------------\\
-  |                                          |                     |
-  |    MAIN/LEFT/PARAMS                      |                     |
-  |                                          |     MAIN/RIGHT      |
-  |------------------------------------------|                     |
-  |   MAIN/LEFT/BUTTONS                      |                     |
-  \\---------------------------------------------------------------/
   """
 
   ID_PLUGIN_NAME = 1000
   ID_ICON_FILE = 1001
   ID_RESOURCE_NAME = 1002
-  ID_ID_PREFIX = 1003
+  ID_SYMBOL_PREFIX = 1003
   ID_DIRECTORY = 1004
   ID_LINK = 1005
   ID_CREATE = 1006
   ID_CANCEL = 1007
   ID_FILELIST_GROUP = 1008
+  ID_OVERWRITE = 1009
+  ID_PLUGIN_ID = 1010
 
-  def update_filelist(self):
-    info = UserDataConverterInfo(
+  def get_converter(self):
+    return UserDataConverter(
       link = self.GetLink(self.ID_LINK),
       plugin_name = self.GetString(self.ID_PLUGIN_NAME),
+      plugin_id = self.GetString(self.ID_PLUGIN_ID),
       resource_name = self.GetString(self.ID_RESOURCE_NAME),
+      symbol_prefix = self.GetString(self.ID_SYMBOL_PREFIX),
       icon_file = self.GetFileSelectorString(self.ID_ICON_FILE),
       directory = self.GetFileSelectorString(self.ID_DIRECTORY)
     )
-    info.autofill()
 
-    files = info.filelist()
-    parent = os.path.dirname(next(files))
+  def update_filelist(self):
+    cnv = self.get_converter()
+    cnv.autofill()
+    files = cnv.files()
+
+    parent = os.path.dirname(files.pop('directory'))
+    files = sorted(files.values(), key=str.lower)
 
     self.LayoutFlushGroup(self.ID_FILELIST_GROUP)
     for entry in file_tree(files, parent=parent, flat=True):
@@ -324,6 +400,29 @@ class UserDataToDescriptionResourceConverterDialog(BaseDialog):
       self.AddStaticText(0, c4d.BFH_LEFT, name=name)
     self.LayoutChanged(self.ID_FILELIST_GROUP)
 
+  def update_create_enabling(self):
+    # TODO: We could also update the default color of the parameters
+    #        to visually indicate which parameters need to be filled.
+    enabled = True
+    if self.GetLink(self.ID_LINK) is None: enabled = False
+    if not self.GetFileSelectorString(self.ID_DIRECTORY): enabled = False
+    if not self.GetString(self.ID_PLUGIN_ID).isdigit(): enabled = False
+    self.Enable(self.ID_CREATE, enabled)
+
+  def do_create(self):
+    cnv = self.get_converter()
+    cnv.autofill()
+    if not cnv.link:
+      c4d.gui.MessageDialog('No source object specified.')
+      return
+    if not cnv.directory:
+      c4d.gui.MessageDialog('No output directory specified.')
+      return
+    try:
+      cnv.create(overwrite=self.GetBool(self.ID_OVERWRITE))
+    except IOError as exc:
+      c4d.gui.MessageDialog(str(exc))
+
   # c4d.gui.GeDialog
 
   def CreateLayout(self):
@@ -336,19 +435,22 @@ class UserDataToDescriptionResourceConverterDialog(BaseDialog):
     self.AddLinkBoxGui(self.ID_LINK, c4d.BFH_SCALEFIT)
     self.AddStaticText(0, c4d.BFH_LEFT, name='Plugin Name')
     self.AddEditText(self.ID_PLUGIN_NAME, c4d.BFH_SCALEFIT)
-    self.AddStaticText(0, c4d.BFH_LEFT, name='Icon')
-    self.AddFileSelector(self.ID_ICON_FILE, c4d.BFH_SCALEFIT, type='load')
+    self.AddStaticText(0, c4d.BFH_LEFT, name='Plugin ID')
+    self.AddEditText(self.ID_PLUGIN_ID, c4d.BFH_LEFT, 100)
     self.AddStaticText(0, c4d.BFH_LEFT, name='Resource Name')
     self.AddEditText(self.ID_RESOURCE_NAME, c4d.BFH_SCALEFIT)
-    self.AddStaticText(0, c4d.BFH_LEFT, name='ID Prefix')
-    self.AddEditText(self.ID_ID_PREFIX, c4d.BFH_SCALEFIT)
+    self.AddStaticText(0, c4d.BFH_LEFT, name='Symbol Prefix')
+    self.AddEditText(self.ID_SYMBOL_PREFIX, c4d.BFH_SCALEFIT)
+    self.AddStaticText(0, c4d.BFH_LEFT, name='Icon')
+    self.AddFileSelector(self.ID_ICON_FILE, c4d.BFH_SCALEFIT, type='load')
     self.AddStaticText(0, c4d.BFH_LEFT, name='Plugin Directory')
     self.AddFileSelector(self.ID_DIRECTORY, c4d.BFH_SCALEFIT, type='directory')
-    self.GroupEnd()  # } MAIN/LEFT/PARAMS
-    self.GroupBegin(0, c4d.BFH_CENTER, 0, 1) # MAIN/LEFT/BUTTONS {
+    self.AddCheckbox(self.ID_OVERWRITE, c4d.BFH_LEFT, 0, 0, name='Overwrite')
+    self.GroupBegin(0, c4d.BFH_CENTER, 0, 1) # MAIN/LEFT/PARAMS/BUTTONS {
     self.AddButton(self.ID_CREATE, c4d.BFH_CENTER, name='Create')
     self.AddButton(self.ID_CANCEL, c4d.BFH_CENTER, name='Cancel')
-    self.GroupEnd()  # } MAIN/LEFT/BUTTONS
+    self.GroupEnd()  # } MAIN/LEFT/PARAMS/BUTTONS
+    self.GroupEnd()  # } MAIN/LEFT/PARAMS
     self.GroupEnd()  # } MAIN/LEFT
     self.AddSeparatorV(0, c4d.BFV_SCALEFIT)
     self.GroupBegin(self.ID_FILELIST_GROUP, c4d.BFH_RIGHT | c4d.BFV_SCALEFIT, 1, 0) # MAIN/RIGHT {
@@ -356,16 +458,35 @@ class UserDataToDescriptionResourceConverterDialog(BaseDialog):
     self.GroupEnd()  # } MAIN/RIGHT
     self.GroupEnd()  # } MAIN
     self.update_filelist()
+    self.update_create_enabling()
     return True
 
   def Command(self, param_id, bc):
     if BaseDialog.Command(self, param_id, bc):
       return True
-    # Check if anything changed that would have an influence on the filelist.
-    if self.ReverseMapId(param_id)[1] in (
+
+    # The actual ID that we create a widget with. The real parameter ID and
+    # the virtual ID are different for compound widgets such as the file
+    # selector.
+    virtual_id = self.ReverseMapId(param_id)[1]
+
+    if virtual_id in (
+      # Check if anything changed that would have an influence on the filelist.
         self.ID_PLUGIN_NAME, self.ID_RESOURCE_NAME, self.ID_DIRECTORY,
         self.ID_ICON_FILE, self.ID_LINK):
       self.update_filelist()
+
+    if virtual_id in (self.ID_LINK, self.ID_DIRECTORY, self.ID_PLUGIN_ID):
+      # Update the create button's enable state.
+      self.update_create_enabling()
+
+    if virtual_id == self.ID_CREATE:
+      self.do_create()
+      return True
+    elif virtual_id == self.ID_CANCEL:
+      self.Close()
+      return True
+
     return True
 
 
