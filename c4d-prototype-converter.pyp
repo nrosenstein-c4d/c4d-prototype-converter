@@ -32,7 +32,7 @@ import sys
 
 class DialogOpenerCommand(c4d.plugins.CommandData):
   """
-
+  Command plugin that opens a dialog.
   """
 
   def __init__(self, dlg_factory, dlgtype=c4d.DLG_TYPE_ASYNC, *open_args, **open_kwargs):
@@ -202,6 +202,62 @@ def makedirs(path, raise_on_exists=False):
       raise
 
 
+def path_parents(path):
+  """
+  A generator that returns *path* and all its parent directories.
+  """
+
+  yield path
+  prev = None
+  while True:
+    path = os.path.dirname(path)
+    if not path or prev == path: break  # Top of relative path or of filesystem
+    yield path
+    prev = path
+
+
+def file_tree(files, parent=None, flat=False):
+  """
+  Produces a tree structure from a list of filenames. Returns a list of the
+  root entries. If *flat* is set to #True, the returned list contains a flat
+  version of all entries in the tree.
+  """
+
+  Entry = collections.namedtuple('Entry', 'path isdir sub parent')
+  entries = {}
+
+  files = (os.path.normpath(x) for x in files)
+  if parent:
+    files = (os.path.relpath(x, parent) for x in files)
+
+  if flat:
+    order = []
+  for filename in files:
+    parent_entry = None
+    for path in reversed(list(path_parents(filename))):
+      entry = entries.get(path)
+      if not entry:
+        entry = Entry(path, path!=filename, {}, parent_entry)  # TODO: Use weak references -- but can't be used with tuples/namedtuples
+        entries[path] = entry
+        base = os.path.basename(path)
+        if parent_entry:
+          parent_entry.sub[base] = entries
+      parent_entry = entry
+    if flat:
+      order.append(entry)
+
+  if flat:
+    result = []
+    for entry in order:
+      index = len(result)
+      while entry:
+        if entry in result: break
+        result.insert(index, entry)
+        entry = entry.parent
+    return result
+  else:
+    return [x for x in entries.values() if not x.parent]
+
 
 # ============================================================================
 # UserData to Description Resource Converter
@@ -361,63 +417,6 @@ class UserDataConverter(object):
         fp.write(self.indent * 2 + '{} = {},\n'.format(child_sym, value))
 
     return sym
-
-
-def path_parents(path):
-  """
-  A generator that returns *path* and all its parent directories.
-  """
-
-  yield path
-  prev = None
-  while True:
-    path = os.path.dirname(path)
-    if not path or prev == path: break  # Top of relative path or of filesystem
-    yield path
-    prev = path
-
-
-def file_tree(files, parent=None, flat=False):
-  """
-  Produces a tree structure from a list of filenames. Returns a list of the
-  root entries. If *flat* is set to #True, the returned list contains a flat
-  version of all entries in the tree.
-  """
-
-  Entry = collections.namedtuple('Entry', 'path isdir sub parent')
-  entries = {}
-
-  files = (os.path.normpath(x) for x in files)
-  if parent:
-    files = (os.path.relpath(x, parent) for x in files)
-
-  if flat:
-    order = []
-  for filename in files:
-    parent_entry = None
-    for path in reversed(list(path_parents(filename))):
-      entry = entries.get(path)
-      if not entry:
-        entry = Entry(path, path!=filename, {}, parent_entry)  # TODO: Use weak references -- but can't be used with tuples/namedtuples
-        entries[path] = entry
-        base = os.path.basename(path)
-        if parent_entry:
-          parent_entry.sub[base] = entries
-      parent_entry = entry
-    if flat:
-      order.append(entry)
-
-  if flat:
-    result = []
-    for entry in order:
-      index = len(result)
-      while entry:
-        if entry in result: break
-        result.insert(index, entry)
-        entry = entry.parent
-    return result
-  else:
-    return [x for x in entries.values() if not x.parent]
 
 
 class UserDataToDescriptionResourceConverterDialog(BaseDialog):
