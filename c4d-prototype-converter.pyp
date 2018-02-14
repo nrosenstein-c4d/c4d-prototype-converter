@@ -497,7 +497,7 @@ class UserDataConverter(object):
     with open(files['strings_us'], 'w') as fp:
       fp.write('STRINGTABLE {self.resource_name} {{\n'.format(self=self))
       fp.write('{self.indent}{self.resource_name} "{self.plugin_name}";\n'.format(self=self))
-      # TODO: Render UserData symbols
+      ud_tree.visit(lambda x: self.render_symbol_string(fp, x, symbol_map))
       fp.write('}\n')
 
     if self.icon_file:
@@ -598,6 +598,13 @@ class UserDataConverter(object):
         return
 
       fp.write(self.indent * depth + '{} {{ {}}}\n'.format(typename, ' '.join(props) + (' ' if props else '')))
+
+  def render_symbol_string(self, fp, node, symbol_map):
+    if not node.data or node.data.descid == c4d.DescID(c4d.ID_USERDATA):
+      return
+    # TODO: Escape special characters.
+    symbol = symbol_map.descid_to_symbol[HashableDescid(node.data.descid)]
+    fp.write(self.indent + '{} "{}";\n'.format(symbol, node.data.bc[c4d.DESC_NAME]))
 
 
 class UserDataToDescriptionResourceConverterDialog(BaseDialog):
