@@ -529,11 +529,7 @@ class UserDataConverter(object):
     return sym
 
   def render_parameter(self, fp, node, symbol_map, depth=1):
-    # TODO: Support for min/max values
-    # TODO: Support for default value
-    # TODO: Support for more data types
-    # TODO: Support for animatable mode
-    # TODO: Support for integer cycle parameters
+    bc = node.data.bc
     symbol = symbol_map.descid_to_symbol[HashableDescid(node.data.descid)]
     dtype = node.data.descid[-1].dtype
     if dtype == c4d.DTYPE_GROUP:
@@ -541,36 +537,67 @@ class UserDataConverter(object):
       for child in node.children:
         self.render_parameter(fp, child, symbol_map, depth+1)
       fp.write(self.indent * depth + '}\n')
-    elif dtype == c4d.DTYPE_BOOL:
-      fp.write(self.indent * depth + 'BOOL {} {{ }}\n'.format(symbol))
-    elif dtype == c4d.DTYPE_LONG:
-      fp.write(self.indent * depth + 'LONG {} {{ }}\n'.format(symbol))
-    elif dtype == c4d.DTYPE_BUTTON:
-      fp.write(self.indent * depth + 'BUTTON {} {{ }}\n'.format(symbol))
-    elif dtype == c4d.DTYPE_COLOR:
-      fp.write(self.indent * depth + 'COLOR {} {{ }}\n'.format(symbol))
-    elif dtype == c4d.DTYPE_FILENAME:
-      fp.write(self.indent * depth + 'FILENAME {} {{ }}\n'.format(symbol))
-    elif dtype == c4d.DTYPE_REAL:
-      fp.write(self.indent * depth + 'REAL {} {{ }}\n'.format(symbol))
-    elif dtype == c4d.DTYPE_GRADIENT:
-      fp.write(self.indent * depth + 'GRADIENT {} {{ }}\n'.format(symbol))
-    elif dtype == c4d.CUSTOMDATATYPE_INEXCLUDE:
-      fp.write(self.indent * depth + 'IN_EXCLUDE {} {{ }}\n'.format(symbol))
-    elif dtype == c4d.DTYPE_BASELISTLINK:
-      fp.write(self.indent * depth + 'LINK {} {{ }}\n'.format(symbol))
-    elif dtype == c4d.CUSTOMDATATYPE_SPLINE:
-      fp.write(self.indent * depth + 'SPLINE {} {{ }}\n'.format(symbol))
-    elif dtype == c4d.DTYPE_STRING:
-      fp.write(self.indent * depth + 'STRING {} {{ }}\n'.format(symbol))
-    elif dtype == c4d.DTYPE_TIME:
-      fp.write(self.indent * depth + 'TIME {} {{ }}\n'.format(symbol))
-    elif dtype == c4d.DTYPE_VECTOR:
-      fp.write(self.indent * depth + 'VECTOR {} {{ }}\n'.format(symbol))
-    elif dtype == c4d.DTYPE_SEPARATOR:
-      fp.write(self.indent * depth + 'SEPARATOR {{ }}\n'.format(symbol))
     else:
-      print('Unhandled datatype:', dtype, '({})'.format(node.data.bc[c4d.DESC_NAME]))
+      typename = None
+      props = []
+      default = bc[c4d.DESC_DEFAULT]
+
+      if bc[c4d.DESC_ANIMATE] == c4d.DESC_ANIMATE_OFF:
+        props.append('ANIMATE OFF;')
+      elif bc[c4d.DESC_ANIMATE] == c4d.DESC_ANIMATE_MIX:
+        props.append('ANIMATE MIX;')
+
+      if dtype == c4d.DTYPE_BOOL:
+        typename = 'BOOL'
+        if default is not None:
+          props.append('DEFAULT 1;' if default else 'DEFAULT 0;')
+      elif dtype == c4d.DTYPE_LONG:
+        # TODO: Support for min/max values
+        # TODO: Support for cycle/slider
+        typename = 'LONG'
+        if isinstance(default, int):
+          props.append('DEFAULT {};'.format(int(default)))
+      elif dtype == c4d.DTYPE_BUTTON:
+        typename = 'BUTTON'
+      elif dtype == c4d.DTYPE_COLOR:
+        # TODO: Support for min/max values
+        typename = 'COLOR'
+        if isinstance(default, c4d.Vector):
+          props.append('DEFAULT {0.x} {0.y} {0.z};'.format(default))
+      elif dtype == c4d.DTYPE_FILENAME:
+        typename = 'FILENAME'
+      elif dtype == c4d.DTYPE_REAL:
+        # TODO: Support for min/max values
+        # TODO: Support for slider
+        typename = 'REAL'
+        if isinstance(default, float):
+          props.append('DEFAULT {};'.format(default))
+      elif dtype == c4d.DTYPE_GRADIENT:
+        typename = 'GRADIENT'
+      elif dtype == c4d.CUSTOMDATATYPE_INEXCLUDE:
+        typename = 'IN_EXCLUDE'
+      elif dtype == c4d.DTYPE_BASELISTLINK:
+        typename = 'LINK'
+        # TODO: Support for link field refuse/accept
+      elif dtype == c4d.CUSTOMDATATYPE_SPLINE:
+        typename = 'SPLINE'
+      elif dtype == c4d.DTYPE_STRING:
+        typename = 'STRING'
+      elif dtype == c4d.DTYPE_TIME:
+        # TODO: Support for min/max values
+        typename = 'TIME'
+      elif dtype == c4d.DTYPE_VECTOR:
+        # TODO: Support for min/max values
+        typename = 'VECTOR'
+        if isinstance(default, c4d.Vector):
+          props.append('DEFAULT {0.x} {0.y} {0.z};'.format(default))
+      elif dtype == c4d.DTYPE_SEPARATOR:
+        typename = 'SEPARATOR'
+      else:
+        print('Unhandled datatype:', dtype, '({})'.format(node.data.bc[c4d.DESC_NAME]))
+        return
+
+      fp.write(self.indent * depth + '{} {{ {}}}\n'.format(typename, ' '.join(props) + (' ' if props else '')))
 
 
 class UserDataToDescriptionResourceConverterDialog(BaseDialog):
