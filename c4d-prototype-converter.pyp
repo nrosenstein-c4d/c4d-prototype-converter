@@ -24,6 +24,7 @@ import errno
 import os
 import re
 import sys
+import weakref
 
 
 # ============================================================================
@@ -194,6 +195,48 @@ class HashableDescid(object):
     return not (self == other)
 
 
+class NullableRef(object):
+  """
+  A weak-reference type that can represent #None.
+  """
+
+  def __init__(self, obj):
+    self.set(obj)
+
+  def __repr__(self):
+    return '<NullableRef to {!r}>'.format(self())
+
+  def __call__(self):
+    if self._ref is not None:
+      return self._ref()
+    return None
+
+  def set(self, obj):
+    self._ref = weakref.ref(obj) if obj is not None else None
+
+
+class Node(object):
+  """
+  Generic tree node type.
+  """
+
+  def __init__(self, data):
+    self.data = data
+    self.parent = NullableRef(None)
+    self.children = []
+
+  def add_child(self, node):
+    node.remove()
+    node.parent.set(self)
+    self.children.append(node)
+
+  def remove(self):
+    parent = self.parent()
+    if parent:
+      parent.children.remove(self)
+    self.parent.set(None)
+
+
 def makedirs(path, raise_on_exists=False):
   try:
     os.makedirs(path)
@@ -223,7 +266,7 @@ def file_tree(files, parent=None, flat=False):
   version of all entries in the tree.
   """
 
-  Entry = collections.namedtuple('Entry', 'path isdir sub parent')
+  NodeData = collections.namedtuple('NodeData', 'path isdir')
   entries = {}
 
   files = (os.path.normpath(x) for x in files)
@@ -237,11 +280,11 @@ def file_tree(files, parent=None, flat=False):
     for path in reversed(list(path_parents(filename))):
       entry = entries.get(path)
       if not entry:
-        entry = Entry(path, path!=filename, {}, parent_entry)  # TODO: Use weak references -- but can't be used with tuples/namedtuples
+        entry = Node(NodeData(path, path!=filename))
+        if parent_entry:
+          parent_entry.add_child(entry)
         entries[path] = entry
         base = os.path.basename(path)
-        if parent_entry:
-          parent_entry.sub[base] = entries
       parent_entry = entry
     if flat:
       order.append(entry)
@@ -253,7 +296,7 @@ def file_tree(files, parent=None, flat=False):
       while entry:
         if entry in result: break
         result.insert(index, entry)
-        entry = entry.parent
+        entry = entry.parent()
     return result
   else:
     return [x for x in entries.values() if not x.parent]
@@ -465,12 +508,12 @@ class UserDataToDescriptionResourceConverterDialog(BaseDialog):
     self.LayoutFlushGroup(self.ID_FILELIST_GROUP)
     for entry in file_tree(files, parent=parent, flat=True):
       depth = 0
-      parent = entry.parent
+      parent = entry.parent()
       while parent:
         depth += 1
-        parent = parent.parent
-      name = '  ' * depth + os.path.basename(entry.path)
-      if entry.isdir:
+        parent = parent.parent()
+      name = '  ' * depth + os.path.basename(entry.data.path)
+      if entry.data.isdir:
         name += '/'
       self.AddStaticText(0, c4d.BFH_LEFT, name=name)
     self.LayoutChanged(self.ID_FILELIST_GROUP)
