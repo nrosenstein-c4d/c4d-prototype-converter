@@ -190,7 +190,7 @@ class UserDataConverter(object):
   """
 
   def __init__(self, link, plugin_name, plugin_id, resource_name,
-               symbol_prefix, icon_file, directory):
+               symbol_prefix, icon_file, directory, indent='  '):
     self.link = link
     self.plugin_name = plugin_name
     self.plugin_id = plugin_id
@@ -198,7 +198,7 @@ class UserDataConverter(object):
     self.symbol_prefix = symbol_prefix
     self.icon_file = icon_file
     self.directory = directory
-    self.indent = '  '
+    self.indent = indent
 
   def autofill(self, default_plugin_name='My Plugin'):
     if not self.plugin_name:
@@ -367,6 +367,11 @@ class UserDataToDescriptionResourceConverterDialog(BaseDialog):
   ID_FILELIST_GROUP = 1008
   ID_OVERWRITE = 1009
   ID_PLUGIN_ID = 1010
+  ID_INDENT = 1011
+
+  INDENT_TAB = 0
+  INDENT_2SPACE = 1
+  INDENT_4SPACE = 2
 
   def get_converter(self):
     return UserDataConverter(
@@ -376,7 +381,8 @@ class UserDataToDescriptionResourceConverterDialog(BaseDialog):
       resource_name = self.GetString(self.ID_RESOURCE_NAME),
       symbol_prefix = self.GetString(self.ID_SYMBOL_PREFIX),
       icon_file = self.GetFileSelectorString(self.ID_ICON_FILE),
-      directory = self.GetFileSelectorString(self.ID_DIRECTORY)
+      directory = self.GetFileSelectorString(self.ID_DIRECTORY),
+      indent = {self.INDENT_TAB: '\t', self.INDENT_2SPACE: '  ', self.INDENT_4SPACE: '    '}[self.GetInt32(self.ID_INDENT)]
     )
 
   def update_filelist(self):
@@ -445,6 +451,11 @@ class UserDataToDescriptionResourceConverterDialog(BaseDialog):
     self.AddFileSelector(self.ID_ICON_FILE, c4d.BFH_SCALEFIT, type='load')
     self.AddStaticText(0, c4d.BFH_LEFT, name='Plugin Directory')
     self.AddFileSelector(self.ID_DIRECTORY, c4d.BFH_SCALEFIT, type='directory')
+    self.AddStaticText(0, c4d.BFH_LEFT, name='Indentation')
+    self.AddComboBox(self.ID_INDENT, c4d.BFH_LEFT)
+    self.AddChild(self.ID_INDENT, self.INDENT_TAB, 'Tab')
+    self.AddChild(self.ID_INDENT, self.INDENT_2SPACE, '2 Spaces')
+    self.AddChild(self.ID_INDENT, self.INDENT_4SPACE, '4 Spaces')
     self.AddCheckbox(self.ID_OVERWRITE, c4d.BFH_LEFT, 0, 0, name='Overwrite')
     self.GroupBegin(0, c4d.BFH_CENTER, 0, 1) # MAIN/LEFT/PARAMS/BUTTONS {
     self.AddButton(self.ID_CREATE, c4d.BFH_CENTER, name='Create')
