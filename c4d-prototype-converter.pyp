@@ -18,6 +18,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
+from __future__ import division, print_function
 import c4d
 import collections
 import errno
@@ -225,6 +226,9 @@ class Node(object):
     self.parent = NullableRef(None)
     self.children = []
 
+  def __repr__(self):
+    return '<Node data={!r}>'.format(self.data)
+
   def add_child(self, node):
     node.remove()
     node.parent.set(self)
@@ -235,6 +239,21 @@ class Node(object):
     if parent:
       parent.children.remove(self)
     self.parent.set(None)
+
+  def visit(self, func, with_root=True):
+    if with_root:
+      func(self)
+    for child in self.children:
+      child.visit(func)
+
+  @property
+  def depth(self):
+    count = 0
+    while True:
+      self = self.parent()
+      if not self: break
+      count += 1
+    return count
 
 
 def makedirs(path, raise_on_exists=False):
@@ -302,6 +321,41 @@ def file_tree(files, parent=None, flat=False):
     return [x for x in entries.values() if not x.parent]
 
 
+def userdata_tree(ud):
+  """
+  Builds a tree of userdata information. Returns a proxy root node that
+  contains at least the main User Data group and eventually other root
+  groups.
+  """
+
+  NodeData = collections.namedtuple('NodeData', 'descid bc')
+  params = {}
+  root = Node(None)
+
+  # Create a node for every parameter.
+  for descid, bc in ud:
+    params[HashableDescid(descid)] = Node(NodeData(descid, bc))
+
+  # The main userdata group is not described in the UserData container.
+  descid = c4d.DescID(c4d.DescLevel(c4d.ID_USERDATA, c4d.DTYPE_SUBCONTAINER, 0))
+  node = Node(NodeData(descid, c4d.BaseContainer()))
+  params[HashableDescid(descid)] = node
+  root.add_child(node)
+
+  # Establish parent-child parameter relationships.
+  for descid, bc in ud:
+    node = params[HashableDescid(descid)]
+    parent_id = bc[c4d.DESC_PARENTGROUP]
+    try:
+      parent = params[HashableDescid(parent_id)]
+    except KeyError:
+      root.add_child(node)
+    else:
+      parent.add_child(node)
+
+  return root
+
+
 # ============================================================================
 # UserData to Description Resource Converter
 # ============================================================================
@@ -321,7 +375,7 @@ class UserDataConverter(object):
       self.prefix = prefix
 
     def get_unique_symbol(self, descid, name, value=None):
-      base = self.prefix + re.sub('[^\w\d_]', '_', name).upper().rstrip('_')
+      base = self.prefix + re.sub('[^\w\d_]+', '_', name).upper().rstrip('_')
       index = 0
       while True:
         symbol = base + (str(index) if index != 0 else '')
@@ -399,10 +453,13 @@ class UserDataConverter(object):
       with open(files['c4d_symbols'], 'w') as fp:
         fp.write('#pragma once\nenum {\n};\n')
 
-    # TODO: Collect resource symbol information from userdata.
-
     ud = self.link.GetUserDataContainer()
     symbol_map = self.SymbolMap(self.symbol_prefix)
+    ud_tree = userdata_tree(ud)
+    ud_main_group = next((
+      x for x in ud_tree.children
+      if x.data.descid == c4d.DescID(c4d.ID_USERDATA)
+    ))
 
     # Render the symbols to the description header. This will also
     # initialize our symbols_map.
@@ -411,8 +468,7 @@ class UserDataConverter(object):
       fp.write('#pragma once\nenum {\n')
       if self.plugin_id:
         fp.write(self.indent + '{self.resource_name} = {self.plugin_id},\n'.format(self=self))
-      for descid, bc in ud:
-        self.render_symbol(fp, descid, bc, symbol_map)
+      ud_tree.visit(lambda x: self.render_symbol(fp, x, symbol_map))
       fp.write('};\n')
 
     makedirs(os.path.dirname(files['description']))
@@ -429,9 +485,12 @@ class UserDataConverter(object):
       fp.write(self.indent + 'NAME {self.resource_name};\n'.format(self=self))
       if propgroup:
         fp.write(self.indent + 'GROUP {0} {{\n'.format(propgroup))
-        # TODO: Render UserData parameters
+        for node in ud_main_group.children:
+          self.render_parameter(fp, node, symbol_map, depth=2)
         fp.write(self.indent + '}\n')
-      # TODO: Render UserData parameters that are not inside the main UserData group
+      for node in ud_tree.children:
+        if node.data.descid == c4d.DescID(c4d.ID_USERDATA): continue
+        self.render_parameter(fp, node, symbol_map)
       fp.write('}\n')
 
     makedirs(os.path.dirname(files['strings_us']))
@@ -445,21 +504,73 @@ class UserDataConverter(object):
       makedirs(os.path.dirname(files['icon']))
       shutil.copy(self.icon_file, files['icon'])
 
-  def render_symbol(self, fp, descid, bc, symbol_map):
+  def render_symbol(self, fp, node, symbol_map):
+    if not node.data or node.data.descid == c4d.DescID(c4d.ID_USERDATA):
+      return
     # Find a unique name for the symbol.
-    name = bc[c4d.DESC_NAME]
-    if descid[-1].dtype == c4d.DTYPE_GROUP:
+    name = node.data.bc[c4d.DESC_SHORT_NAME]
+    if node.data.descid[-1].dtype == c4d.DTYPE_GROUP:
       name += '_GROUP'
+    else:
+      parent = node.parent()
+      if parent.data:
+        parent_name = parent.data.bc.GetString(c4d.DESC_NAME)
+        if parent_name:
+          name = parent_name + ' ' + name
 
-    sym, value = symbol_map.get_unique_symbol(descid, name)
+    sym, value = symbol_map.get_unique_symbol(node.data.descid, name)
     fp.write(self.indent + '{} = {},\n'.format(sym, value))
-    children = bc.GetContainerInstance(c4d.DESC_CYCLE)
+    children = node.data.bc.GetContainerInstance(c4d.DESC_CYCLE)
     if children:
       for value, name in children:
         child_sym = symbol_map.get_unique_symbol(None, sym + '_' + name, value)[0]
         fp.write(self.indent * 2 + '{} = {},\n'.format(child_sym, value))
 
     return sym
+
+  def render_parameter(self, fp, node, symbol_map, depth=1):
+    # TODO: Support for min/max values
+    # TODO: Support for default value
+    # TODO: Support for more data types
+    # TODO: Support for animatable mode
+    # TODO: Support for integer cycle parameters
+    symbol = symbol_map.descid_to_symbol[HashableDescid(node.data.descid)]
+    dtype = node.data.descid[-1].dtype
+    if dtype == c4d.DTYPE_GROUP:
+      fp.write(self.indent * depth + 'GROUP {} {{\n'.format(symbol))
+      for child in node.children:
+        self.render_parameter(fp, child, symbol_map, depth+1)
+      fp.write(self.indent * depth + '}\n')
+    elif dtype == c4d.DTYPE_BOOL:
+      fp.write(self.indent * depth + 'BOOL {} {{ }}\n'.format(symbol))
+    elif dtype == c4d.DTYPE_LONG:
+      fp.write(self.indent * depth + 'LONG {} {{ }}\n'.format(symbol))
+    elif dtype == c4d.DTYPE_BUTTON:
+      fp.write(self.indent * depth + 'BUTTON {} {{ }}\n'.format(symbol))
+    elif dtype == c4d.DTYPE_COLOR:
+      fp.write(self.indent * depth + 'COLOR {} {{ }}\n'.format(symbol))
+    elif dtype == c4d.DTYPE_FILENAME:
+      fp.write(self.indent * depth + 'FILENAME {} {{ }}\n'.format(symbol))
+    elif dtype == c4d.DTYPE_REAL:
+      fp.write(self.indent * depth + 'REAL {} {{ }}\n'.format(symbol))
+    elif dtype == c4d.DTYPE_GRADIENT:
+      fp.write(self.indent * depth + 'GRADIENT {} {{ }}\n'.format(symbol))
+    elif dtype == c4d.CUSTOMDATATYPE_INEXCLUDE:
+      fp.write(self.indent * depth + 'IN_EXCLUDE {} {{ }}\n'.format(symbol))
+    elif dtype == c4d.DTYPE_BASELISTLINK:
+      fp.write(self.indent * depth + 'LINK {} {{ }}\n'.format(symbol))
+    elif dtype == c4d.CUSTOMDATATYPE_SPLINE:
+      fp.write(self.indent * depth + 'SPLINE {} {{ }}\n'.format(symbol))
+    elif dtype == c4d.DTYPE_STRING:
+      fp.write(self.indent * depth + 'STRING {} {{ }}\n'.format(symbol))
+    elif dtype == c4d.DTYPE_TIME:
+      fp.write(self.indent * depth + 'TIME {} {{ }}\n'.format(symbol))
+    elif dtype == c4d.DTYPE_VECTOR:
+      fp.write(self.indent * depth + 'VECTOR {} {{ }}\n'.format(symbol))
+    elif dtype == c4d.DTYPE_SEPARATOR:
+      fp.write(self.indent * depth + 'SEPARATOR {{ }}\n'.format(symbol))
+    else:
+      print('Unhandled datatype:', dtype, '({})'.format(node.data.bc[c4d.DESC_NAME]))
 
 
 class UserDataToDescriptionResourceConverterDialog(BaseDialog):
