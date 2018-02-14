@@ -189,6 +189,26 @@ class UserDataConverter(object):
   be generated.
   """
 
+  class SymbolMap(object):
+
+    def __init__(self, prefix):
+      self.curr_id = 1000
+      self.symbols = collections.OrderedDict()
+      self.prefix = prefix
+
+    def get_unique_symbol(self, name, value=None):
+      base = self.prefix + re.sub('[^\w\d_]', '_', name).upper().rstrip('_')
+      index = 0
+      while True:
+        symbol = base + (str(index) if index != 0 else '')
+        if symbol not in self.symbols: break
+        index += 1
+      if value is None:
+        value = self.curr_id
+        self.curr_id += 1
+      self.symbols[symbol] = value
+      return symbol, value
+
   def __init__(self, link, plugin_name, plugin_id, resource_name,
                symbol_prefix, icon_file, directory, indent='  '):
     self.link = link
@@ -255,14 +275,10 @@ class UserDataConverter(object):
 
     # TODO: Collect resource symbol information from userdata.
 
-    makedirs(os.path.dirname(files['header']))
-    with open(files['header'], 'w') as fp:
-      fp.write('#pragma once\nenum {\n')
-      if self.plugin_id:
-        fp.write(self.indent + '{self.resource_name} = {self.plugin_id},\n'.format(self=self))
-      # TODO: Render UserData symbols
-      fp.write('};\n')
+    ud = self.link.GetUserDataContainer()
+    symbol_map = self.SymbolMap(self.symbol_prefix)
 
+    makedirs(os.path.dirname(files['description']))
     with open(files['description'], 'w') as fp:
       fp.write('CONTAINER {self.resource_name} {{\n'.format(self=self))
       for base, propgroup in [
@@ -281,6 +297,15 @@ class UserDataConverter(object):
       # TODO: Render UserData parameters that are not inside the main UserData group
       fp.write('}\n')
 
+    makedirs(os.path.dirname(files['header']))
+    with open(files['header'], 'w') as fp:
+      fp.write('#pragma once\nenum {\n')
+      if self.plugin_id:
+        fp.write(self.indent + '{self.resource_name} = {self.plugin_id},\n'.format(self=self))
+      for descid, bc in ud:
+        self.render_symbol(fp, descid, bc, symbol_map)
+      fp.write('};\n')
+
     makedirs(os.path.dirname(files['strings_us']))
     with open(files['strings_us'], 'w') as fp:
       fp.write('STRINGTABLE {self.resource_name} {{\n'.format(self=self))
@@ -291,6 +316,20 @@ class UserDataConverter(object):
     if self.icon_file:
       makedirs(os.path.dirname(files['icon']))
       shutil.copy(self.icon_file, files['icon'])
+
+  def render_symbol(self, fp, descid, bc, symbol_map):
+    # Find a unique name for the symbol.
+    name = bc[c4d.DESC_NAME]
+    if descid[-1].dtype == c4d.DTYPE_GROUP:
+      name += '_GROUP'
+
+    sym, value = symbol_map.get_unique_symbol(name)
+    fp.write(self.indent + '{} = {},\n'.format(sym, value))
+    children = bc.GetContainerInstance(c4d.DESC_CYCLE)
+    if children:
+      for value, name in children:
+        child_sym = symbol_map.get_unique_symbol(sym + '_' + name, value)[0]
+        fp.write(self.indent * 2 + '{} = {},\n'.format(child_sym, value))
 
 
 def path_parents(path):
