@@ -400,20 +400,27 @@ class UserDataConverter(object):
     self.directory = directory
     self.indent = indent
 
+  def plugin_type_info(self):
+    if not self.link:
+      return {}
+    if self.link.CheckType(c4d.Obase):
+      return {'resprefix': 'O', 'resbase': 'Obase', 'pluginclass': 'ObjectData'}
+    if self.link.CheckType(c4d.Tbase):
+      return {'resprefix': 'T', 'resbase': 'Tbase', 'pluginclass': 'TagData'}
+    if self.link.CheckType(c4d.Xbase):
+      return {'resprefix': 'X', 'resbase': 'Xbase', 'pluginclass': 'ShaderData'}
+    if self.link.CheckType(c4d.Mbase):
+      return {'resprefix': 'M', 'resbase': 'Mbase', 'pluginclass': None}
+    return {}
+
   def autofill(self, default_plugin_name='My Plugin'):
     if not self.plugin_name:
       self.plugin_name = (self.link.GetName() if self.link else '')
     if not self.plugin_name:
       self.plugin_name = default_plugin_name
     if not self.resource_name:
-      resource_prefix = 'O'
-      if self.link:
-        if self.link.CheckType(c4d.Obase): resource_prefix = 'O'
-        elif self.link.CheckType(c4d.Tbase): resource_prefix = 'T'
-        elif self.link.CheckType(c4d.Xbase): resource_prefix = 'X'
-        else: resource_prefix = ''
       self.resource_name = re.sub('[^\w\d]+', '', self.plugin_name).lower()
-      self.resource_name = resource_prefix + self.resource_name
+      self.resource_name = self.plugin_type_info().get('resprefix', '') + self.resource_name
     if not self.symbol_prefix:
       self.symbol_prefix = re.sub('[^\w\d]+', '_', self.plugin_name).rstrip('_').upper() + '_'
 
@@ -421,6 +428,8 @@ class UserDataConverter(object):
     f = lambda s: s.format(**sys._getframe(1).f_locals)
     j = os.path.join
     parent_dir = self.directory or self.plugin_name
+    plugin_filename = re.sub('[^\w\d]+', '-', self.plugin_name).lower()
+    plugin_type_info = self.plugin_type_info()
     result = {
       'directory': parent_dir,
       'c4d_symbols': j(parent_dir, 'res', 'c4d_symbols.h'),
@@ -428,6 +437,8 @@ class UserDataConverter(object):
       'description': j(parent_dir, 'res', 'description', f('{self.resource_name}.res')),
       'strings_us': j(parent_dir, 'res', 'strings_us', 'description', f('{self.resource_name}.str'))
     }
+    if plugin_type_info.get('pluginclass'):
+      result['plugin'] = j(parent_dir, f('{plugin_filename}.pyp'))
     if self.icon_file:
       suffix = os.path.splitext(self.icon_file)[1]
       result['icon'] = j(parent_dir, 'res', 'icons', f('{self.plugin_name}{suffix}'))
@@ -441,6 +452,7 @@ class UserDataConverter(object):
     if self.icon_file and not os.path.isfile(self.icon_file):
       raise IOError('File "{}" does not exist'.format(self.icon_file))
 
+    plugin_type_info = self.plugin_type_info()
     files = self.files()
     if not overwrite:
       for k in ('header', 'description', 'icon', 'strings_us'):
@@ -501,6 +513,20 @@ class UserDataConverter(object):
       fp.write('{self.indent}{self.resource_name} "{self.plugin_name}";\n'.format(self=self))
       ud_tree.visit(lambda x: self.render_symbol_string(fp, x, symbol_map))
       fp.write('}\n')
+
+    if 'plugin' in files:
+      makedirs(os.path.dirname(files['plugin']))
+      with open(files['plugin'], 'w') as fp:
+        plugin_class = re.sub('[^\w\d]+', '', self.plugin_name) + 'Data'
+        fp.write('# Copyright (C) <year> <author>\n\n')
+        fp.write('import c4d\n\n')
+        # TODO: add code for Init() and registration process
+        fp.write('class {}(c4d.plugins.{}):\n'.format(plugin_class, plugin_type_info['pluginclass']))
+        fp.write(self.indent + 'pass\n\n')
+        fp.write('def main():\n')
+        fp.write(self.indent + 'pass\n\n')
+        fp.write("if __name__ == '__main__':\n")
+        fp.write(self.indent + 'main()\n')
 
     if self.icon_file:
       makedirs(os.path.dirname(files['icon']))
