@@ -414,6 +414,8 @@ class UserDataConverter(object):
         else: resource_prefix = ''
       self.resource_name = re.sub('[^\w\d]+', '', self.plugin_name).lower()
       self.resource_name = resource_prefix + self.resource_name
+    if not self.symbol_prefix:
+      self.symbol_prefix = re.sub('[^\w\d]+', '_', self.plugin_name).rstrip('_').upper() + '_'
 
   def files(self):
     f = lambda s: s.format(**sys._getframe(1).f_locals)
@@ -663,6 +665,10 @@ class UserDataToDescriptionResourceConverterDialog(BaseDialog):
       self.AddStaticText(0, c4d.BFH_LEFT, name=name)
     self.LayoutChanged(self.ID_FILELIST_GROUP)
 
+    self.SetString(self.ID_SYMBOL_PREFIX, cnv.symbol_prefix, False, c4d.EDITTEXT_HELPTEXT)
+    self.SetString(self.ID_RESOURCE_NAME, cnv.resource_name, False, c4d.EDITTEXT_HELPTEXT)
+    self.SetString(self.ID_PLUGIN_NAME, cnv.plugin_name, False, c4d.EDITTEXT_HELPTEXT)
+
   def update_create_enabling(self):
     # TODO: We could also update the default color of the parameters
     #        to visually indicate which parameters need to be filled.
@@ -694,11 +700,11 @@ class UserDataToDescriptionResourceConverterDialog(BaseDialog):
     self.GroupBegin(0, c4d.BFH_SCALEFIT | c4d.BFV_SCALEFIT, 0, 1)  # MAIN {
     self.GroupBegin(0, c4d.BFH_SCALEFIT | c4d.BFV_SCALEFIT, 1, 0)  # MAIN/LEFT {
     self.GroupBegin(0, c4d.BFH_SCALEFIT | c4d.BFV_FIT, 2, 0)  # MAIN/LEFT/PARAMS {
-    self.AddStaticText(0, c4d.BFH_LEFT, name='Source')
+    self.AddStaticText(0, c4d.BFH_LEFT, name='Source *')
     self.AddLinkBoxGui(self.ID_LINK, c4d.BFH_SCALEFIT)
     self.AddStaticText(0, c4d.BFH_LEFT, name='Plugin Name')
     self.AddEditText(self.ID_PLUGIN_NAME, c4d.BFH_SCALEFIT)
-    self.AddStaticText(0, c4d.BFH_LEFT, name='Plugin ID')
+    self.AddStaticText(0, c4d.BFH_LEFT, name='Plugin ID *')
     self.AddEditText(self.ID_PLUGIN_ID, c4d.BFH_LEFT, 100)
     self.AddStaticText(0, c4d.BFH_LEFT, name='Resource Name')
     self.AddEditText(self.ID_RESOURCE_NAME, c4d.BFH_SCALEFIT)
@@ -706,7 +712,7 @@ class UserDataToDescriptionResourceConverterDialog(BaseDialog):
     self.AddEditText(self.ID_SYMBOL_PREFIX, c4d.BFH_SCALEFIT)
     self.AddStaticText(0, c4d.BFH_LEFT, name='Icon')
     self.AddFileSelector(self.ID_ICON_FILE, c4d.BFH_SCALEFIT, type='load')
-    self.AddStaticText(0, c4d.BFH_LEFT, name='Plugin Directory')
+    self.AddStaticText(0, c4d.BFH_LEFT, name='Plugin Directory *')
     self.AddFileSelector(self.ID_DIRECTORY, c4d.BFH_SCALEFIT, type='directory')
     self.AddStaticText(0, c4d.BFH_LEFT, name='Indentation')
     self.AddComboBox(self.ID_INDENT, c4d.BFH_LEFT)
