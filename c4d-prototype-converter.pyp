@@ -97,6 +97,31 @@ class BaseDialog(c4d.gui.GeDialog):
       self.__reverse_cache[param_id] = result
       return result
 
+  def ForwardMapId(self, virtual_id):
+    """
+    A generator for IDs that of the virtual parameter *virtual_id* or just
+    the *virtual_id* if it does not correspond to a virtual parameter.
+    """
+
+    widget = self.__widgets.get(virtual_id, {})
+    has_id = False
+    for key in widget:
+      if key.startswith('id.'):
+        yield widget[key]
+        has_id = True
+    if not has_id:
+      yield virtual_id
+
+  def GetColor(self, colorid):
+    c = self.GetColorRGB(colorid)
+    return c4d.Vector(c['r'] / 255., c['g'] / 255., c['b'] / 255.)
+
+  def SetColor(self, param_id, colorid, color=None):
+    if color is None:
+      color = self.GetColor(colorid)
+    for real_id in self.ForwardMapId(param_id):
+      self.SetDefaultColor(real_id, colorid, color)
+
   def SendCommand(self, param_id, bc=None):
     if bc is None:
       bc = c4d.BaseContainer()
@@ -162,8 +187,7 @@ class BaseDialog(c4d.gui.GeDialog):
   def SetLink(self, param_id, obj):
     self.__widgets[param_id]['gui'].SetLink(obj)
 
-  # c4d.gui.GeDialog
-
+  # @override
   def Command(self, param, bc):
     event = {'type': 'command', 'param': param, 'bc': bc}
     for widget in self.__widgets.values():
@@ -699,9 +723,20 @@ class UserDataToDescriptionResourceConverterDialog(BaseDialog):
     # TODO: We could also update the default color of the parameters
     #        to visually indicate which parameters need to be filled.
     enabled = True
-    if self.GetLink(self.ID_LINK) is None: enabled = False
-    if not self.GetFileSelectorString(self.ID_DIRECTORY): enabled = False
-    if not self.GetString(self.ID_PLUGIN_ID).isdigit(): enabled = False
+    ids = [self.ID_LINK, self.ID_DIRECTORY, self.ID_PLUGIN_ID]
+    invalids = []
+    if self.GetLink(self.ID_LINK) is None:
+      invalids.append(self.ID_LINK)
+      enabled = False
+    if not self.GetFileSelectorString(self.ID_DIRECTORY):
+      invalids.append(self.ID_DIRECTORY)
+      enabled = False
+    if not self.GetString(self.ID_PLUGIN_ID).isdigit():
+      invalids.append(self.ID_PLUGIN_ID)
+      enabled = False
+    for param_id in ids:
+      color = c4d.Vector(0.8, 0.1, 0.1) if param_id in invalids else None
+      self.SetColor(param_id, c4d.COLOR_BG, color)
     self.Enable(self.ID_CREATE, enabled)
 
   def do_create(self):
