@@ -1,0 +1,38 @@
+# Copyright (C) <year> <author>
+
+import c4d
+import os
+
+
+def load_bitmap(path):
+  path = os.path.join(os.path.dirname(__file__), path)
+  bmp = c4d.bitmaps.BaseBitmap()
+  if bmp.InitWith(path)[0] != c4d.IMAGERESULT_OK:
+    bmp = None
+  return bmp
+
+
+class {{ plugin_class }}(c4d.plugins.{{ plugin_type }}Data):
+
+  PLUGIN_ID = {{ plugin_id }}
+  PLUGIN_NAME = {{ repr(plugin_name) }}
+  PLUGIN_INFO = {{ plugin_info }}
+  PLUGIN_DESC = {{ repr(plugin_desc) }}
+  PLUGIN_ICON = {{ 'load_bitmap({!r})'.format(plugin_icon) if plugin_icon else 'None' }}
+  PLUGIN_DISKLEVEL = 0
+
+  @classmethod
+  def Register(cls):
+    return c4d.plugins.Register{{ plugin_type }}Plugin(
+      cls.PLUGIN_ID, cls.PLUGIN_NAME, cls.PLUGIN_INFO, cls, cls.PLUGIN_DESC,
+      cls.PLUGIN_ICON, cls.PLUGIN_DISKLEVEL)
+
+  def Init(self, node):
+    pass
+
+  def Message(self, msgid, data):
+    return True
+
+
+if __name__ == '__main__':
+  {{ plugin_class }}.Register()

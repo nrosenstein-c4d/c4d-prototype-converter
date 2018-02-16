@@ -266,8 +266,19 @@ class Node(object):
 
 
 # ============================================================================
-# Filesystem Utilities
+# Generic Utilities
 # ============================================================================
+
+
+def little_jinja(template_string, context):
+  """
+  Renders a template that uses `{{ expr }}` syntax using the specified
+  *context*. The `expr` will be evaluated as a pure Python expression.
+  """
+
+  def callback(match):
+    return str(eval(match.group(1), context))
+  return re.sub('\{\{(.*?)\}\}', callback, template_string)
 
 
 def makedirs(path, raise_on_exists=False):
@@ -338,6 +349,11 @@ def file_tree(files, parent=None, flat=False):
 # ============================================================================
 # C4D Helper Functions
 # ============================================================================
+
+
+def res_file(path):
+  res_dir = os.path.join(os.path.dirname(__file__))
+  return os.path.join(res_dir, path)
 
 
 def hash_descid(x):
@@ -639,13 +655,13 @@ class UserDataConverter(object):
     if not self.link:
       return {}
     if self.link.CheckType(c4d.Obase):
-      return {'resprefix': 'O', 'resbase': 'Obase', 'pluginclass': 'ObjectData'}
+      return {'resprefix': 'O', 'resbase': 'Obase', 'plugintype': 'Object'}
     if self.link.CheckType(c4d.Tbase):
-      return {'resprefix': 'T', 'resbase': 'Tbase', 'pluginclass': 'TagData'}
+      return {'resprefix': 'T', 'resbase': 'Tbase', 'plugintype': 'Tag'}
     if self.link.CheckType(c4d.Xbase):
-      return {'resprefix': 'X', 'resbase': 'Xbase', 'pluginclass': 'ShaderData'}
+      return {'resprefix': 'X', 'resbase': 'Xbase', 'plugintype': 'Shader'}
     if self.link.CheckType(c4d.Mbase):
-      return {'resprefix': 'M', 'resbase': 'Mbase', 'pluginclass': None}
+      return {'resprefix': 'M', 'resbase': 'Mbase', 'plugintype': None}
     return {}
 
   def autofill(self, default_plugin_name='My Plugin'):
@@ -672,7 +688,7 @@ class UserDataConverter(object):
       'description': j(parent_dir, 'res', 'description', f('{self.resource_name}.res')),
       'strings_us': j(parent_dir, 'res', 'strings_us', 'description', f('{self.resource_name}.str'))
     }
-    if plugin_type_info.get('pluginclass'):
+    if plugin_type_info.get('plugintype'):
       result['plugin'] = j(parent_dir, f('{plugin_filename}.pyp'))
     if self.icon_file:
       suffix = os.path.splitext(self.icon_file)[1]
@@ -752,17 +768,19 @@ class UserDataConverter(object):
 
     if 'plugin' in files:
       makedirs(os.path.dirname(files['plugin']))
+      with open(res_file('templates/plugin_stub.txt')) as fp:
+        template = fp.read()
+      context = {
+        'plugin_class': re.sub('[^\w\d]+', '', self.plugin_name) + 'Data',
+        'plugin_type': plugin_type_info['plugintype'],
+        'plugin_id': self.plugin_id,
+        'plugin_name': self.plugin_name,
+        'plugin_info': 0,
+        'plugin_desc': self.resource_name,
+        'plugin_icon': 'res/icons/' + os.path.basename(files['icon']) if files.get('icon') else None,
+      }
       with open(files['plugin'], 'w') as fp:
-        plugin_class = re.sub('[^\w\d]+', '', self.plugin_name) + 'Data'
-        fp.write('# Copyright (C) <year> <author>\n\n')
-        fp.write('import c4d\n\n')
-        # TODO: add code for Init() and registration process
-        fp.write('class {}(c4d.plugins.{}):\n'.format(plugin_class, plugin_type_info['pluginclass']))
-        fp.write(self.indent + 'pass\n\n')
-        fp.write('def main():\n')
-        fp.write(self.indent + 'pass\n\n')
-        fp.write("if __name__ == '__main__':\n")
-        fp.write(self.indent + 'main()\n')
+        fp.write(little_jinja(template, context))
 
     if self.icon_file:
       makedirs(os.path.dirname(files['icon']))
