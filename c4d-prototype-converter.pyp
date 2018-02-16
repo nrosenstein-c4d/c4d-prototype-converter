@@ -28,9 +28,11 @@ import sys
 import types
 import weakref
 
+
 # ============================================================================
 # Datastructures
 # ============================================================================
+
 
 class NullableRef(object):
   """
@@ -246,6 +248,7 @@ class Node(object):
 # Filesystem Utilities
 # ============================================================================
 
+
 def makedirs(path, raise_on_exists=False):
   try:
     os.makedirs(path)
@@ -315,6 +318,7 @@ def file_tree(files, parent=None, flat=False):
 # C4D Helper Functions
 # ============================================================================
 
+
 def hash_descid(x):
   return hash(tuple(
     (l.id, l.dtype, l.creator) for l in (x[i] for i in xrange(x.GetDepth()))
@@ -359,6 +363,7 @@ def userdata_tree(ud):
 # ============================================================================
 # C4D Helper Classes
 # ============================================================================
+
 
 class DialogOpenerCommand(c4d.plugins.CommandData):
   """
@@ -529,6 +534,7 @@ class BaseDialog(c4d.gui.GeDialog):
 # ============================================================================
 # UserData to Description Resource Converter
 # ============================================================================
+
 
 class UserDataConverter(object):
   """
@@ -969,6 +975,11 @@ class UserDataToDescriptionResourceConverterDialog(BaseDialog):
       return True
 
     return True
+
+
+# ============================================================================
+# Main
+# ============================================================================
 
 
 def main():
