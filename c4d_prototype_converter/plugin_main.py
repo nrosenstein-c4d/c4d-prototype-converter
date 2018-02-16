@@ -776,6 +776,7 @@ class UserDataToDescriptionResourceConverterDialog(BaseDialog):
     else:
       cnv.save_to_link()
       print('Saved settings to object "{}".'.format(cnv.link.GetName()))
+      c4d.storage.ShowInFinder(cnv.files()['directory'])
     self.update_filelist()
 
   # c4d.gui.GeDialog
