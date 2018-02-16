@@ -311,6 +311,10 @@ class UserDataConverter(object):
       self.resource_name = self.plugin_type_info().get('resprefix', '') + self.resource_name
     if not self.symbol_prefix:
       self.symbol_prefix = re.sub('[^\w\d]+', '_', self.plugin_name).rstrip('_').upper() + '_'
+    if not self.directory:
+      write_dir = c4d.storage.GeGetC4DPath(c4d.C4D_PATH_STARTUPWRITE)
+      dirname = re.sub('[^\w\d]+', '-', self.plugin_name).lower()
+      self.directory = os.path.join(write_dir, 'plugins', dirname)
 
   def files(self):
     f = lambda s: s.format(**sys._getframe(1).f_locals)
@@ -737,17 +741,14 @@ class UserDataToDescriptionResourceConverterDialog(BaseDialog):
     self.SetString(self.ID_SYMBOL_PREFIX, cnv.symbol_prefix, False, c4d.EDITTEXT_HELPTEXT)
     self.SetString(self.ID_RESOURCE_NAME, cnv.resource_name, False, c4d.EDITTEXT_HELPTEXT)
     self.SetString(self.ID_PLUGIN_NAME, cnv.plugin_name, False, c4d.EDITTEXT_HELPTEXT)
+    self.SetFileSelectorString(self.ID_DIRECTORY, cnv.directory, flags=c4d.EDITTEXT_HELPTEXT)
 
   def update_enabling(self):
-    ids = [self.ID_LINK_TEXT, self.ID_DIRECTORY_TEXT, self.ID_PLUGIN_ID_TEXT]
+    ids = [self.ID_LINK_TEXT, self.ID_PLUGIN_ID_TEXT]
     invalids = []
 
     if self.GetLink(self.ID_LINK) is None:
       invalids.append(self.ID_LINK_TEXT)
-      enabled = False
-
-    if not self.GetFileSelectorString(self.ID_DIRECTORY):
-      invalids.append(self.ID_DIRECTORY_TEXT)
       enabled = False
 
     if not self.GetString(self.ID_PLUGIN_ID).isdigit():
@@ -826,7 +827,7 @@ class UserDataToDescriptionResourceConverterDialog(BaseDialog):
     self.AddEditText(self.ID_SYMBOL_PREFIX, c4d.BFH_SCALEFIT)
     self.AddStaticText(0, c4d.BFH_LEFT, name='Icon')
     self.AddFileSelector(self.ID_ICON_FILE, c4d.BFH_SCALEFIT, type='load')
-    self.AddStaticText(self.ID_DIRECTORY_TEXT, c4d.BFH_LEFT, name='Plugin Directory *')
+    self.AddStaticText(self.ID_DIRECTORY_TEXT, c4d.BFH_LEFT, name='Plugin Directory')
     self.AddFileSelector(self.ID_DIRECTORY, c4d.BFH_SCALEFIT, type='directory')
     self.GroupEnd() # } MAIN/LEFT/PARAMS/EXPORTSETTINGS
 
