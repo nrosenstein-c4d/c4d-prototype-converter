@@ -779,7 +779,7 @@ class UserDataConverter(object):
     return result
 
   def optional_file_ids(self):
-    return ('c4d_symbols', 'plugin')
+    return ('directory', 'c4d_symbols', 'plugin')
 
   def create(self, overwrite=False):
     if not self.directory:
@@ -1210,6 +1210,7 @@ class UserDataToDescriptionResourceConverterDialog(BaseDialog):
     else:
       cnv.save_to_link()
       print('Saved settings to object "{}".'.format(cnv.link.GetName()))
+    self.update_filelist()
 
   # c4d.gui.GeDialog
 
