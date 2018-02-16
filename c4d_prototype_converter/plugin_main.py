@@ -26,6 +26,7 @@ import collections
 import os
 import re
 import sys
+import webbrowser
 
 from .c4dutils import (unicode_refreplace, get_subcontainer, has_subcontainer,
   DialogOpenerCommand, BaseDialog)
@@ -647,6 +648,7 @@ class UserDataToDescriptionResourceConverterDialog(BaseDialog):
   ID_PLUGIN_ID_TEXT = 1013
   ID_DIRECTORY_TEXT = 1014
   ID_MODE = 1015
+  ID_PLUGIN_ID_GET = 1016
 
   INDENT_TAB = 0
   INDENT_2SPACE = 1
@@ -813,7 +815,10 @@ class UserDataToDescriptionResourceConverterDialog(BaseDialog):
     self.AddStaticText(0, c4d.BFH_LEFT, name='Plugin Name')
     self.AddEditText(self.ID_PLUGIN_NAME, c4d.BFH_SCALEFIT)
     self.AddStaticText(self.ID_PLUGIN_ID_TEXT, c4d.BFH_LEFT, name='Plugin ID *')
+    self.GroupBegin(0, c4d.BFH_SCALEFIT, 0, 1)
     self.AddEditText(self.ID_PLUGIN_ID, c4d.BFH_LEFT, 100)
+    self.AddButton(self.ID_PLUGIN_ID_GET, c4d.BFH_LEFT, name='Get Plugin ID')
+    self.GroupEnd()
     self.AddStaticText(0, c4d.BFH_LEFT, name='Resource Name')
     self.AddEditText(self.ID_RESOURCE_NAME, c4d.BFH_SCALEFIT)
     self.AddStaticText(0, c4d.BFH_LEFT, name='Symbol Prefix')
@@ -876,6 +881,9 @@ class UserDataToDescriptionResourceConverterDialog(BaseDialog):
       return True
     elif virtual_id == self.ID_CANCEL:
       self.Close()
+      return True
+    elif virtual_id == self.ID_PLUGIN_ID_GET:
+      webbrowser.open('http://www.plugincafe.com/forum/developer.asp')
       return True
 
     return True
