@@ -471,11 +471,14 @@ class BaseDialog(c4d.gui.GeDialog):
   methods for managing widgets.
   """
 
+  helptext_color = c4d.Vector(0.4)
+
   def __init__(self):
     super(BaseDialog, self).__init__()
     self.__widgets = {}
     self.__reverse_cache = {}
     self.__idcounter = 9000000
+    self.__edit_texts = set()
 
   def AllocId(self):
     """
@@ -599,14 +602,46 @@ class BaseDialog(c4d.gui.GeDialog):
     self.__widgets[param_id]['gui'].SetLink(obj)
 
   # @override
+  def SetString(self, param_id, value, tristate=False, flags=0):
+    if flags == 0 and param_id in self.__edit_texts:
+      color = None if value else self.helptext_color
+      self.SetColor(param_id, c4d.COLOR_TEXT_EDIT, color)
+    super(BaseDialog, self).SetString(param_id, value, tristate, flags)
+
+  # @override
+  def AddEditText(self, param_id, *args, **kwargs):
+    """
+    An extended version of the #GeDialog.AddEditText() function that records
+    the ID in order to change the widget's text color if only the help text
+    is displayed.
+    """
+
+    self.__edit_texts.add(param_id)
+    return super(BaseDialog, self).AddEditText(param_id, *args, **kwargs)
+
+  # @override
   def Command(self, param, bc):
+    # Invoke virtual widget callbacks.
     event = {'type': 'command', 'param': param, 'bc': bc}
     for widget in self.__widgets.values():
       callback = widget.get('callback')
       if callback:
         if callback(widget, event):
           return True
+
+    # Update the text color if a text widget was changed.
+    if param in self.__edit_texts:
+      color = None if bc[c4d.BFM_ACTION_VALUE] else self.helptext_color
+      self.SetColor(param, c4d.COLOR_TEXT_EDIT, color)
+
     return False
+
+  # @override
+  def InitValues(self):
+    for param_id in self.__edit_texts:
+      color = None if self.GetString(param_id) else self.helptext_color
+      self.SetColor(param_id, c4d.COLOR_TEXT_EDIT, color)
+    return True
 
 
 # ============================================================================
