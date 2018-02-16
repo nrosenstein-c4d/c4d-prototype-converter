@@ -272,7 +272,9 @@ class UserDataConverter(object):
 
   def __init__(self, link, plugin_name, plugin_id, resource_name,
                symbol_prefix, icon_file, directory, indent='  ',
-               write_plugin_stub=True, write_resources=True):
+               write_plugin_stub=True, write_resources=True,
+               overwrite='none'):
+    assert overwrite in ('none', 'some', 'all'), overwrite
     self.link = link
     self.plugin_name = plugin_name
     self.plugin_id = plugin_id
@@ -283,6 +285,7 @@ class UserDataConverter(object):
     self.indent = indent
     self.write_plugin_stub = write_plugin_stub
     self.write_resources = write_resources
+    self.overwrite = overwrite
 
   def plugin_type_info(self):
     if not self.link:
@@ -332,7 +335,7 @@ class UserDataConverter(object):
   def optional_file_ids(self):
     return ('directory', 'c4d_symbols', 'plugin')
 
-  def create(self, overwrite=False):
+  def create(self):
     if not self.directory:
       raise RuntimeError('UserDataConverter.directory must be set')
     if not self.link:
@@ -343,7 +346,7 @@ class UserDataConverter(object):
     plugin_type_info = self.plugin_type_info()
     files = self.files()
     optionals = self.optional_file_ids()
-    if not overwrite:
+    if self.overwrite == 'none':
       for k in files:
         v = files.get(k)
         if not v or k in optionals: continue
@@ -351,7 +354,7 @@ class UserDataConverter(object):
           raise IOError('File "{}" already exists'.format(v))
 
     makedirs(os.path.dirname(files['c4d_symbols']))
-    if not os.path.isfile(files['c4d_symbols']):
+    if self.overwrite == 'all' or not os.path.isfile(files['c4d_symbols']):
       makedirs(os.path.dirname(files['c4d_symbols']))
       with open(files['c4d_symbols'], 'w') as fp:
         fp.write('#pragma once\nenum {\n};\n')
@@ -404,7 +407,7 @@ class UserDataConverter(object):
       ud_tree.visit(lambda x: self.render_symbol_string(fp, x, symbol_map))
       fp.write('}\n')
 
-    if 'plugin' in files and not os.path.isfile(files['plugin']):
+    if 'plugin' in files and (self.overwrite == 'all' or not os.path.isfile(files['plugin'])):
       makedirs(os.path.dirname(files['plugin']))
       with open(res_file('templates/plugin_stub.txt')) as fp:
         template = fp.read()
@@ -653,12 +656,17 @@ class UserDataToDescriptionResourceConverterDialog(BaseDialog):
   MODE_RESOURCE = 1
   MODE_PLUGINSTUB = 2
 
+  OVERWRITE_OFF = 0
+  OVERWRITE_SOME = 1
+  OVERWRITE_ALL = 2
+
   COLOR_BLUE = c4d.Vector(0.5, 0.6, 0.9)
   COLOR_RED = c4d.Vector(0.9, 0.3, 0.3)
   COLOR_YELLOW = c4d.Vector(0.9, 0.8, 0.6)
 
   def get_converter(self):
     mode = self.GetInt32(self.ID_MODE)
+    overwrite = {self.OVERWRITE_OFF: 'none', self.OVERWRITE_SOME: 'some', self.OVERWRITE_ALL: 'all'}[self.GetInt32(self.ID_OVERWRITE)]
     return UserDataConverter(
       link = self.GetLink(self.ID_LINK),
       plugin_name = self.GetString(self.ID_PLUGIN_NAME),
@@ -669,6 +677,7 @@ class UserDataToDescriptionResourceConverterDialog(BaseDialog):
       directory = self.GetFileSelectorString(self.ID_DIRECTORY),
       write_plugin_stub = mode in (self.MODE_ALL, self.MODE_PLUGINSTUB),
       write_resources = mode in (self.MODE_ALL, self.MODE_RESOURCE),
+      overwrite = overwrite,
       indent = {self.INDENT_TAB: '\t', self.INDENT_2SPACE: '  ', self.INDENT_4SPACE: '    '}[self.GetInt32(self.ID_INDENT)]
     )
 
@@ -699,7 +708,6 @@ class UserDataToDescriptionResourceConverterDialog(BaseDialog):
     cnv.autofill()
     files = cnv.files()
 
-    overwrite = self.GetBool(self.ID_OVERWRITE)
     parent = os.path.dirname(files.pop('directory'))
     files = sorted(files.items(), key=lambda x: x[1].lower())
 
@@ -714,10 +722,13 @@ class UserDataToDescriptionResourceConverterDialog(BaseDialog):
       self.AddStaticText(widget_id, c4d.BFH_LEFT, name=name)
       full_path = os.path.join(parent, entry['path'])
       if not entry['isdir'] and os.path.isfile(full_path):
-        if entry['data'][0] in cnv.optional_file_ids():
-          color = self.COLOR_YELLOW
+        if cnv.overwrite == 'all':
+          color = self.COLOR_BLUE
+        elif cnv.overwrite == 'some':
+          is_optional = entry['data'][0] in cnv.optional_file_ids()
+          color = self.COLOR_YELLOW if is_optional else self.COLOR_BLUE
         else:
-          color = self.COLOR_BLUE if overwrite else self.COLOR_RED
+          color = self.COLOR_RED
         self.SetColor(widget_id, c4d.COLOR_TEXT, color)
     self.LayoutChanged(self.ID_FILELIST_GROUP)
 
@@ -757,7 +768,7 @@ class UserDataToDescriptionResourceConverterDialog(BaseDialog):
       c4d.gui.MessageDialog('No output directory specified.')
       return
     try:
-      cnv.create(overwrite=self.GetBool(self.ID_OVERWRITE))
+      cnv.create()
     except IOError as exc:
       c4d.gui.MessageDialog(str(exc))
     else:
@@ -782,12 +793,16 @@ class UserDataToDescriptionResourceConverterDialog(BaseDialog):
     self.AddChild(self.ID_MODE, self.MODE_ALL, 'Resource Files + Plugin Stub')
     self.AddChild(self.ID_MODE, self.MODE_RESOURCE, 'Resource Files')
     self.AddChild(self.ID_MODE, self.MODE_PLUGINSTUB, 'Plugin Stub')
+    self.AddStaticText(0, c4d.BFH_LEFT, name='Overwrite')
+    self.AddComboBox(self.ID_OVERWRITE, c4d.BFH_SCALEFIT)
+    self.AddChild(self.ID_OVERWRITE, self.OVERWRITE_OFF, 'Nothing')
+    self.AddChild(self.ID_OVERWRITE, self.OVERWRITE_SOME, 'Resource Files')
+    self.AddChild(self.ID_OVERWRITE, self.OVERWRITE_ALL, 'Everything')
     self.AddStaticText(0, c4d.BFH_LEFT, name='Indentation')
     self.AddComboBox(self.ID_INDENT, c4d.BFH_LEFT)
     self.AddChild(self.ID_INDENT, self.INDENT_TAB, 'Tab')
     self.AddChild(self.ID_INDENT, self.INDENT_2SPACE, '2 Spaces')
     self.AddChild(self.ID_INDENT, self.INDENT_4SPACE, '4 Spaces')
-    self.AddCheckbox(self.ID_OVERWRITE, c4d.BFH_LEFT, 0, 0, name='Overwrite')
     self.GroupEnd() # } MAIN/LEFT/PARAMS/EXPORTSETTINGS
 
     self.GroupBegin(0, c4d.BFH_SCALEFIT | c4d.BFV_FIT, 2, 0, title='Plugin')  # MAIN/LEFT/PARAMS/PLUGIN {
