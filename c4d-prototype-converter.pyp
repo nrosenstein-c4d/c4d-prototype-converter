@@ -868,7 +868,8 @@ class UserDataConverter(object):
             default_name = cycle.GetString(default)
           for _, name in cycle:
             cycle_lines.append(symbol_map.get_cycle_symbol(node, name) + ';')
-          props.append('CYCLE {\n' + (self.indent+'\n').join(cycle_lines) + '\n}')
+          cycle_lines = self.indent + ('\n'+self.indent).join(cycle_lines)
+          props.append('CYCLE {\n' + cycle_lines + '\n}')
           if default_name:
             props.append('DEFAULT {};'.format(symbol_map.get_cycle_symbol(node, default_name)))
           elif isinstance(default, int):
@@ -955,9 +956,22 @@ class UserDataConverter(object):
         print('Unhandled datatype:', dtype, '({})'.format(node['bc'][c4d.DESC_NAME]))
         return
 
-      # TODO: Determine if newlines are used in props and render them indented
-      #       on separate lines.
-      fp.write(self.indent * depth + '{} {} {{ {}}}\n'.format(typename, symbol, ' '.join(props) + (' ' if props else '')))
+      if any('\n' in x for x in props):
+        fp.write(self.indent * depth + '{} {} {{\n'.format(typename, symbol))
+        single, multi = [], []
+        for prop in props:
+          prop = prop.rstrip()
+          if '\n' in prop: multi.append(prop)
+          else: single.append(prop)
+        if single:
+          fp.write(self.indent * (depth+1) + ' '.join(single) + '\n')
+        for prop in multi:
+          for line in prop.split('\n'):
+            fp.write(self.indent * (depth+1) + line + '\n')
+        fp.write(self.indent * depth + '}\n')
+      else:
+        fp.write(self.indent * depth + '{} {} {{ {}}}\n'.format(
+          typename, symbol, ' '.join(props) + (' ' if props else '')))
 
   def render_symbol_string(self, fp, node, symbol_map):
     if not node.data or node['descid'] == c4d.DescID(c4d.ID_USERDATA):
