@@ -25,11 +25,329 @@ import errno
 import os
 import re
 import sys
+import types
 import weakref
+
+# ============================================================================
+# Datastructures
+# ============================================================================
+
+class NullableRef(object):
+  """
+  A weak-reference type that can represent #None.
+  """
+
+  def __init__(self, obj):
+    self.set(obj)
+
+  def __repr__(self):
+    return '<NullableRef to {!r}>'.format(self())
+
+  def __call__(self):
+    if self._ref is not None:
+      return self._ref()
+    return None
+
+  def set(self, obj):
+    self._ref = weakref.ref(obj) if obj is not None else None
+
+
+class Node(object):
+  """
+  Generic tree node type.
+  """
+
+  def __init__(self, data):
+    self.data = data
+    self.parent = NullableRef(None)
+    self.children = []
+
+  def __repr__(self):
+    return '<Node data={!r}>'.format(self.data)
+
+  def add_child(self, node):
+    node.remove()
+    node.parent.set(self)
+    self.children.append(node)
+
+  def remove(self):
+    parent = self.parent()
+    if parent:
+      parent.children.remove(self)
+    self.parent.set(None)
+
+  def visit(self, func, with_root=True):
+    if with_root:
+      func(self)
+    for child in self.children:
+      child.visit(func)
+
+  @property
+  def depth(self):
+    count = 0
+    while True:
+      self = self.parent()
+      if not self: break
+      count += 1
+    return count
+
+
+class Generic(type):
+  """
+  Metaclass that can be used for classes that need one or more datatypes
+  pre-declared to function properly. The datatypes must be declared using
+  the `__generic_args__` member and passed to the classes' `__getitem__()`
+  operator to bind the class to these arguments.
+
+  A generic class constructor may check it's `__generic_bind__` member to
+  see if its generic arguments are bound or not.
+  """
+
+  def __init__(cls, *args, **kwargs):
+    if not hasattr(cls, '__generic_args__'):
+      raise TypeError('{}.__generic_args__ is not set'.format(cls.__name__))
+    had_optional = False
+    for index, item in enumerate(cls.__generic_args__):
+      if not isinstance(item, tuple):
+        item = (item,)
+      arg_name = item[0]
+      arg_default = item[1] if len(item) > 1 else NotImplemented
+      if arg_default is NotImplemented and had_optional:
+        raise ValueError('invalid {}.__generic_args__, default argument '
+          'followed by non-default argument "{}"'
+          .format(cls.__name__, arg_name))
+      cls.__generic_args__[index] = (arg_name, arg_default)
+    super(Generic, cls).__init__(*args, **kwargs)
+    if not hasattr(cls, '__generic_bind__'):
+      cls.__generic_bind__ = None
+    else:
+      assert len(cls.__generic_args__) == len(cls.__generic_bind__)
+      for i in xrange(len(cls.__generic_args__)):
+        value = cls.__generic_bind__[i]
+        if isinstance(value, types.FunctionType):
+          value = staticmethod(value)
+        setattr(cls, cls.__generic_args__[i][0], value)
+
+  def __getitem__(cls, args):
+    cls = getattr(cls, '__generic_base__', cls)
+    if not isinstance(args, tuple):
+      args = (args,)
+    if len(args) > cls.__generic_args__:
+      raise TypeError('{} takes at most {} generic arguments ({} given)'
+        .format(cls.__name__, len(cls.__generic_args__), len(args)))
+    # Find the number of required arguments.
+    for index in xrange(len(cls.__generic_args__)):
+      if cls.__generic_args__[index][1] != NotImplemented:
+        break
+    else:
+      index = len(cls.__generic_args__)
+    min_args = index
+    if len(args) < min_args:
+      raise TypeError('{} takes at least {} generic arguments ({} given)'
+        .format(cls.__name__, min_args, len(args)))
+    # Bind the generic arguments.
+    bind_data = []
+    for index in xrange(len(cls.__generic_args__)):
+      arg_name, arg_default = cls.__generic_args__[index]
+      if index < len(args):
+        arg_value = args[index]
+      else:
+        assert arg_default is not NotImplemented
+        arg_value = arg_default
+      bind_data.append(arg_value)
+    type_name = '{}[{}]'.format(cls.__name__, ', '.join(repr(x) for x in bind_data))
+    data = {
+      '__generic_bind__': bind_data,
+      '__generic_base__': cls
+    }
+    return type(type_name, (cls,), data)
+
+
+class HashDict(object):
+  """
+  Allows using a different hash key for the key objects in the dictionary.
+  """
+
+  __metaclass__ = Generic
+  __generic_args__ = ['key_hash']
+
+  class KeyWrapper(object):
+    def __init__(self, key, hash_func):
+      self.key = key
+      self.hash_func = hash_func
+    def __repr__(self):
+      return repr(self.key)
+    def __hash__(self):
+      return self.hash_func(self.key)
+    def __eq__(self, other):
+      return self.key == other.key
+    def __ne__(self, other):
+      return self.key != other.key
+
+  def __init__(self):
+    if not self.__generic_bind__:
+      raise TypeError('HashDict object must be bound to generic arguments')
+    self._dict = {}
+
+  def __repr__(self):
+    return repr(self._dict)
+
+  def __getitem__(self, key):
+    key = self.KeyWrapper(key, self.key_hash)
+    return self._dict[key]
+
+  def __setitem__(self, key, value):
+    key = self.KeyWrapper(key, self.key_hash)
+    self._dict[key] = value
+
+  def __delitem__(self, key):
+    key = self.KeyWrapper(key, self.key_hash)
+    del self._dict[key]
+
+  def __iter__(self):
+    return self.iterkeys()
+
+  def items(self):
+    return list(self.iteritems())
+
+  def keys(self):
+    return list(self.iterkeys())
+
+  def values(self):
+    return self._dict.values()
+
+  def iterkeys(self):
+    for key in self._dict.keys():
+      yield key.value
+
+  def itervalues(self):
+    return self._dict.itervalues()
+
+  def get(self, key, *args):
+    key = self.KeyWrapper(key, self.key_hash)
+    return self._dict.get(key, *args)
+
+  def setdefault(self, key, value):
+    key = self.KeyWrapper(key, self.key_hash)
+    return self._dict.setdefault(key, value)
 
 
 # ============================================================================
-# Helpers
+# Filesystem Utilities
+# ============================================================================
+
+def makedirs(path, raise_on_exists=False):
+  try:
+    os.makedirs(path)
+  except OSError as exc:
+    if raise_on_exists or exc.errno != errno.EEXIST:
+      raise
+
+
+def path_parents(path):
+  """
+  A generator that returns *path* and all its parent directories.
+  """
+
+  yield path
+  prev = None
+  while True:
+    path = os.path.dirname(path)
+    if not path or prev == path: break  # Top of relative path or of filesystem
+    yield path
+    prev = path
+
+
+def file_tree(files, parent=None, flat=False):
+  """
+  Produces a tree structure from a list of filenames. Returns a list of the
+  root entries. If *flat* is set to #True, the returned list contains a flat
+  version of all entries in the tree.
+  """
+
+  NodeData = collections.namedtuple('NodeData', 'path isdir')
+  entries = {}
+
+  files = (os.path.normpath(x) for x in files)
+  if parent:
+    files = (os.path.relpath(x, parent) for x in files)
+
+  if flat:
+    order = []
+  for filename in files:
+    parent_entry = None
+    for path in reversed(list(path_parents(filename))):
+      entry = entries.get(path)
+      if not entry:
+        entry = Node(NodeData(path, path!=filename))
+        if parent_entry:
+          parent_entry.add_child(entry)
+        entries[path] = entry
+        base = os.path.basename(path)
+      parent_entry = entry
+    if flat:
+      order.append(entry)
+
+  if flat:
+    result = []
+    for entry in order:
+      index = len(result)
+      while entry:
+        if entry in result: break
+        result.insert(index, entry)
+        entry = entry.parent()
+    return result
+  else:
+    return [x for x in entries.values() if not x.parent]
+
+
+# ============================================================================
+# C4D Helper Functions
+# ============================================================================
+
+def hash_descid(x):
+  return hash(tuple(
+    (l.id, l.dtype, l.creator) for l in (x[i] for i in xrange(x.GetDepth()))
+  ))
+
+
+def userdata_tree(ud):
+  """
+  Builds a tree of userdata information. Returns a proxy root node that
+  contains at least the main User Data group and eventually other root
+  groups.
+  """
+
+  NodeData = collections.namedtuple('NodeData', 'descid bc')
+  params = HashDict[hash_descid]()
+  root = Node(None)
+
+  # Create a node for every parameter.
+  for descid, bc in ud:
+    params[descid] = Node(NodeData(descid, bc))
+
+  # The main userdata group is not described in the UserData container.
+  descid = c4d.DescID(c4d.DescLevel(c4d.ID_USERDATA, c4d.DTYPE_SUBCONTAINER, 0))
+  node = Node(NodeData(descid, c4d.BaseContainer()))
+  params[descid] = node
+  root.add_child(node)
+
+  # Establish parent-child parameter relationships.
+  for descid, bc in ud:
+    node = params[descid]
+    parent_id = bc[c4d.DESC_PARENTGROUP]
+    try:
+      parent = params[parent_id]
+    except KeyError:
+      root.add_child(node)
+    else:
+      parent.add_child(node)
+
+  return root
+
+
+# ============================================================================
+# C4D Helper Classes
 # ============================================================================
 
 class DialogOpenerCommand(c4d.plugins.CommandData):
@@ -198,188 +516,6 @@ class BaseDialog(c4d.gui.GeDialog):
     return False
 
 
-class HashableDescid(object):
-
-  def __init__(self, descid):
-    self.descid = descid
-
-  def __hash__(self):
-    return hash(tuple(
-      (l.id, l.dtype, l.creator)
-      for l in (
-        self.descid[i] for i in xrange(self.descid.GetDepth())
-      )
-    ))
-
-  def __eq__(self, other):
-    if isinstance(other, HashableDescid):
-      return other.descid == self.descid
-    return False
-
-  def __ne__(self, other):
-    return not (self == other)
-
-
-class NullableRef(object):
-  """
-  A weak-reference type that can represent #None.
-  """
-
-  def __init__(self, obj):
-    self.set(obj)
-
-  def __repr__(self):
-    return '<NullableRef to {!r}>'.format(self())
-
-  def __call__(self):
-    if self._ref is not None:
-      return self._ref()
-    return None
-
-  def set(self, obj):
-    self._ref = weakref.ref(obj) if obj is not None else None
-
-
-class Node(object):
-  """
-  Generic tree node type.
-  """
-
-  def __init__(self, data):
-    self.data = data
-    self.parent = NullableRef(None)
-    self.children = []
-
-  def __repr__(self):
-    return '<Node data={!r}>'.format(self.data)
-
-  def add_child(self, node):
-    node.remove()
-    node.parent.set(self)
-    self.children.append(node)
-
-  def remove(self):
-    parent = self.parent()
-    if parent:
-      parent.children.remove(self)
-    self.parent.set(None)
-
-  def visit(self, func, with_root=True):
-    if with_root:
-      func(self)
-    for child in self.children:
-      child.visit(func)
-
-  @property
-  def depth(self):
-    count = 0
-    while True:
-      self = self.parent()
-      if not self: break
-      count += 1
-    return count
-
-
-def makedirs(path, raise_on_exists=False):
-  try:
-    os.makedirs(path)
-  except OSError as exc:
-    if raise_on_exists or exc.errno != errno.EEXIST:
-      raise
-
-
-def path_parents(path):
-  """
-  A generator that returns *path* and all its parent directories.
-  """
-
-  yield path
-  prev = None
-  while True:
-    path = os.path.dirname(path)
-    if not path or prev == path: break  # Top of relative path or of filesystem
-    yield path
-    prev = path
-
-
-def file_tree(files, parent=None, flat=False):
-  """
-  Produces a tree structure from a list of filenames. Returns a list of the
-  root entries. If *flat* is set to #True, the returned list contains a flat
-  version of all entries in the tree.
-  """
-
-  NodeData = collections.namedtuple('NodeData', 'path isdir')
-  entries = {}
-
-  files = (os.path.normpath(x) for x in files)
-  if parent:
-    files = (os.path.relpath(x, parent) for x in files)
-
-  if flat:
-    order = []
-  for filename in files:
-    parent_entry = None
-    for path in reversed(list(path_parents(filename))):
-      entry = entries.get(path)
-      if not entry:
-        entry = Node(NodeData(path, path!=filename))
-        if parent_entry:
-          parent_entry.add_child(entry)
-        entries[path] = entry
-        base = os.path.basename(path)
-      parent_entry = entry
-    if flat:
-      order.append(entry)
-
-  if flat:
-    result = []
-    for entry in order:
-      index = len(result)
-      while entry:
-        if entry in result: break
-        result.insert(index, entry)
-        entry = entry.parent()
-    return result
-  else:
-    return [x for x in entries.values() if not x.parent]
-
-
-def userdata_tree(ud):
-  """
-  Builds a tree of userdata information. Returns a proxy root node that
-  contains at least the main User Data group and eventually other root
-  groups.
-  """
-
-  NodeData = collections.namedtuple('NodeData', 'descid bc')
-  params = {}
-  root = Node(None)
-
-  # Create a node for every parameter.
-  for descid, bc in ud:
-    params[HashableDescid(descid)] = Node(NodeData(descid, bc))
-
-  # The main userdata group is not described in the UserData container.
-  descid = c4d.DescID(c4d.DescLevel(c4d.ID_USERDATA, c4d.DTYPE_SUBCONTAINER, 0))
-  node = Node(NodeData(descid, c4d.BaseContainer()))
-  params[HashableDescid(descid)] = node
-  root.add_child(node)
-
-  # Establish parent-child parameter relationships.
-  for descid, bc in ud:
-    node = params[HashableDescid(descid)]
-    parent_id = bc[c4d.DESC_PARENTGROUP]
-    try:
-      parent = params[HashableDescid(parent_id)]
-    except KeyError:
-      root.add_child(node)
-    else:
-      parent.add_child(node)
-
-  return root
-
-
 # ============================================================================
 # UserData to Description Resource Converter
 # ============================================================================
@@ -395,7 +531,7 @@ class UserDataConverter(object):
     def __init__(self, prefix):
       self.curr_id = 1000
       self.symbols = collections.OrderedDict()
-      self.descid_to_symbol = {}
+      self.descid_to_symbol = HashDict[hash_descid]()
       self.prefix = prefix
 
     def get_unique_symbol(self, descid, name, value=None):
@@ -410,7 +546,7 @@ class UserDataConverter(object):
         self.curr_id += 1
       self.symbols[symbol] = value
       if descid is not None:
-        self.descid_to_symbol[HashableDescid(descid)] = symbol
+        self.descid_to_symbol[descid] = symbol
       return symbol, value
 
   def __init__(self, link, plugin_name, plugin_id, resource_name,
@@ -582,7 +718,7 @@ class UserDataConverter(object):
 
   def render_parameter(self, fp, node, symbol_map, depth=1):
     bc = node.data.bc
-    symbol = symbol_map.descid_to_symbol[HashableDescid(node.data.descid)]
+    symbol = symbol_map.descid_to_symbol[node.data.descid]
     dtype = node.data.descid[-1].dtype
     if dtype == c4d.DTYPE_GROUP:
       fp.write(self.indent * depth + 'GROUP {} {{\n'.format(symbol))
@@ -655,7 +791,7 @@ class UserDataConverter(object):
     if not node.data or node.data.descid == c4d.DescID(c4d.ID_USERDATA):
       return
     # TODO: Escape special characters.
-    symbol = symbol_map.descid_to_symbol[HashableDescid(node.data.descid)]
+    symbol = symbol_map.descid_to_symbol[node.data.descid]
     fp.write(self.indent + '{} "{}";\n'.format(symbol, node.data.bc[c4d.DESC_NAME]))
 
 
