@@ -427,6 +427,17 @@ def userdata_tree(ud):
   return root
 
 
+def get_subcontainer(bc, sub_id):
+  if not has_subcontainer(bc, sub_id):
+    bc.SetContainer(sub_id, c4d.BaseContainer())
+    assert has_subcontainer(bc, sub_id)
+  return bc.GetContainerInstance(sub_id)
+
+
+def has_subcontainer(bc, sub_id):
+  return bc.GetType(sub_id) == c4d.DA_CONTAINER
+
+
 # ============================================================================
 # C4D Helper Classes
 # ============================================================================
@@ -601,6 +612,9 @@ class BaseDialog(c4d.gui.GeDialog):
 # ============================================================================
 # UserData to Description Resource Converter
 # ============================================================================
+
+
+ID_PLUGIN_CONVERTER = 1040648
 
 
 class SymbolMap(object):
@@ -985,6 +999,34 @@ class UserDataConverter(object):
       fp.write(self.indent * 2 + '{} "{}";\n'.format(
         symbol_map.get_cycle_symbol(node, name), name))
 
+  def save_to_link(self):
+    if not self.link:
+      raise RuntimeError('has no link')
+    bc = get_subcontainer(self.link.GetDataInstance(), ID_PLUGIN_CONVERTER)
+    bc[0] = self.plugin_name
+    bc[1] = self.plugin_id
+    bc[2] = self.resource_name
+    bc[3] = self.symbol_prefix
+    bc[4] = self.icon_file
+    bc[5] = self.directory
+    bc[6] = self.indent
+    assert self.has_settings()
+
+  def read_from_link(self):
+    bc = get_subcontainer(self.link.GetDataInstance(), ID_PLUGIN_CONVERTER)
+    self.plugin_name = bc.GetString(0)
+    self.plugin_id = bc.GetString(1)
+    self.resource_name = bc.GetString(2)
+    self.symbol_prefix = bc.GetString(3)
+    self.icon_file = bc.GetString(4)
+    self.directory = bc.GetString(5)
+    self.indent = bc.GetString(6)
+
+  def has_settings(self):
+    if self.link:
+      return has_subcontainer(self.link.GetDataInstance(), ID_PLUGIN_CONVERTER)
+    return False
+
 
 class UserDataToDescriptionResourceConverterDialog(BaseDialog):
   """
@@ -1030,6 +1072,25 @@ class UserDataToDescriptionResourceConverterDialog(BaseDialog):
       directory = self.GetFileSelectorString(self.ID_DIRECTORY),
       indent = {self.INDENT_TAB: '\t', self.INDENT_2SPACE: '  ', self.INDENT_4SPACE: '    '}[self.GetInt32(self.ID_INDENT)]
     )
+
+  def load_settings(self):
+    cnv = self.get_converter()
+    if not cnv.link: return
+    if not cnv.has_settings(): return
+    cnv.read_from_link()
+    self.SetString(self.ID_PLUGIN_NAME, cnv.plugin_name)
+    self.SetString(self.ID_PLUGIN_ID, cnv.plugin_id)
+    self.SetString(self.ID_RESOURCE_NAME, cnv.resource_name)
+    self.SetString(self.ID_SYMBOL_PREFIX, cnv.symbol_prefix)
+    self.SetFileSelectorString(self.ID_ICON_FILE, cnv.icon_file)
+    self.SetFileSelectorString(self.ID_DIRECTORY, cnv.directory)
+    if cnv.indent == '\t':
+      self.SetInt32(self.ID_INDENT, self.INDENT_TAB)
+    elif cnv.indent == '  ':
+      self.SetInt32(self.ID_INDENT, self.INDENT_2SPACE)
+    elif cnv.indent == '    ':
+      self.SetInt32(self.ID_INDENT, self.INDENT_4SPACE)
+    print('Loaded settings from object "{}".'.format(cnv.link.GetName()))
 
   def update_filelist(self):
     cnv = self.get_converter()
@@ -1092,6 +1153,9 @@ class UserDataToDescriptionResourceConverterDialog(BaseDialog):
       cnv.create(overwrite=self.GetBool(self.ID_OVERWRITE))
     except IOError as exc:
       c4d.gui.MessageDialog(str(exc))
+    else:
+      cnv.save_to_link()
+      print('Saved settings to object "{}".'.format(cnv.link.GetName()))
 
   # c4d.gui.GeDialog
 
@@ -1146,16 +1210,15 @@ class UserDataToDescriptionResourceConverterDialog(BaseDialog):
     self.GroupEnd()  # } MAIN/RIGHT
     self.GroupEnd()  # } MAIN
 
-
-    self.GroupBegin(0, c4d.BFH_SCALEFIT, 0, 1) # MAIN/LEFT/PARAMS/BUTTONS {
+    self.GroupBegin(0, c4d.BFH_SCALEFIT, 0, 1) # BUTTONS {
     self.AddButton(self.ID_CREATE, c4d.BFH_CENTER, name='Create')
     self.AddStaticText(0, c4d.BFH_SCALEFIT)
     self.AddButton(self.ID_CANCEL, c4d.BFH_CENTER, name='Cancel')
-    self.GroupEnd()  # } MAIN/LEFT/PARAMS/BUTTONS
-
+    self.GroupEnd()  # } BUTTONS
 
     # Initialize values.
     self.SetLink(self.ID_LINK, c4d.documents.GetActiveDocument().GetActiveObject())
+    self.load_settings()
 
     # Update UI.
     self.update_filelist()
@@ -1182,7 +1245,10 @@ class UserDataToDescriptionResourceConverterDialog(BaseDialog):
       # Update the create button's enable state.
       self.update_enabling()
 
-    if virtual_id == self.ID_CREATE:
+    if virtual_id == self.ID_LINK:
+      self.load_settings()
+      return True
+    elif virtual_id == self.ID_CREATE:
       self.do_create()
       return True
     elif virtual_id == self.ID_CANCEL:
@@ -1199,7 +1265,7 @@ class UserDataToDescriptionResourceConverterDialog(BaseDialog):
 
 def main():
   DialogOpenerCommand(UserDataToDescriptionResourceConverterDialog)\
-    .Register(1040648, 'UserData to .res Converter')
+    .Register(ID_PLUGIN_CONVERTER, 'UserData to .res Converter')
 
 
 if __name__ == '__main__':
