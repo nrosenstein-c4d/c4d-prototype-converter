@@ -1038,7 +1038,12 @@ class UserDataToDescriptionResourceConverterDialog(BaseDialog):
       name = '  ' * depth + os.path.basename(entry['path'])
       if entry['isdir']:
         name += '/'
-      self.AddStaticText(0, c4d.BFH_LEFT, name=name)
+      # TODO: We should somehow free or re-use these IDs on the next update.
+      widget_id = self.AllocId()
+      self.AddStaticText(widget_id, c4d.BFH_LEFT, name=name)
+      full_path = os.path.join(parent, entry['path'])
+      if not entry['isdir'] and os.path.isfile(full_path):
+        self.SetColor(widget_id, c4d.COLOR_TEXT, c4d.Vector(0.8, 0.3, 0.3))
     self.LayoutChanged(self.ID_FILELIST_GROUP)
 
     self.SetString(self.ID_SYMBOL_PREFIX, cnv.symbol_prefix, False, c4d.EDITTEXT_HELPTEXT)
