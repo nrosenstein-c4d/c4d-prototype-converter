@@ -52,46 +52,6 @@ class NullableRef(object):
     self._ref = weakref.ref(obj) if obj is not None else None
 
 
-class Node(object):
-  """
-  Generic tree node type.
-  """
-
-  def __init__(self, data):
-    self.data = data
-    self.parent = NullableRef(None)
-    self.children = []
-
-  def __repr__(self):
-    return '<Node data={!r}>'.format(self.data)
-
-  def add_child(self, node):
-    node.remove()
-    node.parent.set(self)
-    self.children.append(node)
-
-  def remove(self):
-    parent = self.parent()
-    if parent:
-      parent.children.remove(self)
-    self.parent.set(None)
-
-  def visit(self, func, with_root=True):
-    if with_root:
-      func(self)
-    for child in self.children:
-      child.visit(func)
-
-  @property
-  def depth(self):
-    count = 0
-    while True:
-      self = self.parent()
-      if not self: break
-      count += 1
-    return count
-
-
 class Generic(type):
   """
   Metaclass that can be used for classes that need one or more datatypes
@@ -232,6 +192,56 @@ class HashDict(object):
     return self._dict.setdefault(key, value)
 
 
+class Node(object):
+  """
+  Generic tree node type.
+  """
+
+  __metaclass__ = Generic
+  __generic_args__ = ['data_cls']
+
+  def __init__(self, *args, **kwargs):
+    if not self.__generic_bind__:
+      raise TypeError('missing generic arguments for Node class')
+    if self.data_cls is None:
+      if args or kwargs:
+        raise TypeError('{} takes no arguments'.format(type(self).__name__))
+      self.data = None
+    else:
+      self.data = self.data_cls(*args, **kwargs)
+    self.parent = NullableRef(None)
+    self.children = []
+
+  def __repr__(self):
+    return '<Node data={!r}>'.format(self.data)
+
+  def add_child(self, node):
+    node.remove()
+    node.parent.set(self)
+    self.children.append(node)
+
+  def remove(self):
+    parent = self.parent()
+    if parent:
+      parent.children.remove(self)
+    self.parent.set(None)
+
+  def visit(self, func, with_root=True):
+    if with_root:
+      func(self)
+    for child in self.children:
+      child.visit(func)
+
+  @property
+  def depth(self):
+    count = 0
+    while True:
+      self = self.parent()
+      if not self: break
+      count += 1
+    return count
+
+
 # ============================================================================
 # Filesystem Utilities
 # ============================================================================
@@ -265,7 +275,7 @@ def file_tree(files, parent=None, flat=False):
   version of all entries in the tree.
   """
 
-  NodeData = collections.namedtuple('NodeData', 'path isdir')
+  DataNode = Node[collections.namedtuple('Data', 'path isdir')]
   entries = {}
 
   files = (os.path.normpath(x) for x in files)
@@ -279,7 +289,7 @@ def file_tree(files, parent=None, flat=False):
     for path in reversed(list(path_parents(filename))):
       entry = entries.get(path)
       if not entry:
-        entry = Node(NodeData(path, path!=filename))
+        entry = DataNode(path, path!=filename)
         if parent_entry:
           parent_entry.add_child(entry)
         entries[path] = entry
@@ -318,17 +328,17 @@ def userdata_tree(ud):
   groups.
   """
 
-  NodeData = collections.namedtuple('NodeData', 'descid bc')
+  DataNode = Node[collections.namedtuple('Data', 'descid bc')]
   params = HashDict[hash_descid]()
-  root = Node(None)
+  root = Node[None]()
 
   # Create a node for every parameter.
   for descid, bc in ud:
-    params[descid] = Node(NodeData(descid, bc))
+    params[descid] = DataNode(descid, bc)
 
   # The main userdata group is not described in the UserData container.
   descid = c4d.DescID(c4d.DescLevel(c4d.ID_USERDATA, c4d.DTYPE_SUBCONTAINER, 0))
-  node = Node(NodeData(descid, c4d.BaseContainer()))
+  node = DataNode(descid, c4d.BaseContainer())
   params[descid] = node
   root.add_child(node)
 
