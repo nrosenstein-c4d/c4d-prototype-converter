@@ -28,6 +28,11 @@ import sys
 import types
 import weakref
 
+try: from io import BytesIO as StringIO
+except ImportError:
+  try: from cStringIO import StringIO
+  except ImportError: from StringIO import StringIO
+
 
 # ============================================================================
 # Datastructures
@@ -347,6 +352,28 @@ def file_tree(files, parent=None, flat=False):
     return result
   else:
     return list(roots)
+
+
+def unicode_refreplace(ustring):
+  '''
+  Replaces all non-ASCII characters in the supplied unicode string with
+  Cinema 4D stringtable unicode escape sequences. Returns a binary string.
+  '''
+
+  if not isinstance(ustring, unicode):
+    ustring = ustring.decode('utf8')
+
+  fp = StringIO()
+  for char in ustring:
+    try:
+      if char in '\n\r\t\b':
+        raise UnicodeEncodeError
+      char = char.encode('ascii')
+    except UnicodeEncodeError:
+      char = '\\u' + ('%04x' % ord(char)).upper()
+    fp.write(char)
+
+  return fp.getvalue()
 
 
 # ============================================================================
@@ -829,7 +856,6 @@ class UserDataConverter(object):
           props.append('DEFAULT 1;' if default else 'DEFAULT 0;')
 
       elif dtype in (c4d.DTYPE_LONG, c4d.DTYPE_REAL):
-        # TODO: Support for min/max values
         typename = 'LONG' if dtype == c4d.DTYPE_LONG else 'REAL'
         typecast = int if dtype == c4d.DTYPE_LONG else float
         cycle = bc[c4d.DESC_CYCLE]
@@ -883,6 +909,8 @@ class UserDataConverter(object):
           props.append(vecprop('MIN', bc.GetVector(c4d.DESC_MIN)))
         if bc.GetType(c4d.DESC_MAX) in (c4d.DTYPE_COLOR, c4d.DTYPE_VECTOR):
           props.append(vecprop('MAX', bc.GetVector(c4d.DESC_MAX)))
+        if bc[c4d.DESC_CUSTOMGUI] == c4d.CUSTOMGUI_SUBDESCRIPTION:
+          props.append('CUSTOMGUI SUBDESCRIPTION;')
 
       elif dtype == c4d.DTYPE_FILENAME:
         typename = 'FILENAME'
@@ -895,7 +923,18 @@ class UserDataConverter(object):
 
       elif dtype == c4d.DTYPE_BASELISTLINK:
         typename = 'LINK'
-        # TODO: Support for link field refuse/accept
+        refuse = bc[c4d.DESC_REFUSE]
+        if refuse:
+          props.append('REFUSE { ' + ' '.join(
+            (refuse_name if refuse_name else str(refuse_id)) + ';'
+            for refuse_id, refuse_name in refuse
+          ) + '}')
+        accept = bc[c4d.DESC_ACCEPT]
+        if accept:
+          props.append('ACCEPT { ' + ' '.join(
+            (refuse_name if refuse_name else str(refuse_id)) + ';'
+            for refuse_id, refuse_name in refuse
+          ) + '}')
 
       elif dtype == c4d.CUSTOMDATATYPE_SPLINE:
         typename = 'SPLINE'
@@ -904,7 +943,6 @@ class UserDataConverter(object):
         typename = 'STRING'
 
       elif dtype == c4d.DTYPE_TIME:
-        # TODO: Support for min/max values
         typename = 'TIME'
 
       elif dtype == c4d.DTYPE_SEPARATOR:
@@ -921,12 +959,14 @@ class UserDataConverter(object):
   def render_symbol_string(self, fp, node, symbol_map):
     if not node.data or node['descid'] == c4d.DescID(c4d.ID_USERDATA):
       return
-    # TODO: Escape special characters.
     symbol = symbol_map.descid_to_symbol[node['descid']]
-    fp.write(self.indent + '{} "{}";\n'.format(symbol, node['bc'][c4d.DESC_NAME]))
+    name = unicode_refreplace(node['bc'][c4d.DESC_NAME])
+    fp.write(self.indent + '{} "{}";\n'.format(symbol, name))
     cycle = node['bc'][c4d.DESC_CYCLE]
     for __, name in (cycle or []):
-      fp.write(self.indent * 2 + '{} "{}";\n'.format(symbol_map.get_cycle_symbol(node, name), name))
+      name = unicode_refreplace(name)
+      fp.write(self.indent * 2 + '{} "{}";\n'.format(
+        symbol_map.get_cycle_symbol(node, name), name))
 
 
 class UserDataToDescriptionResourceConverterDialog(BaseDialog):
