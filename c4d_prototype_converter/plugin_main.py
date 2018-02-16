@@ -653,6 +653,7 @@ class UserDataToDescriptionResourceConverterDialog(BaseDialog):
   MODE_RESOURCE = 1
   MODE_PLUGINSTUB = 2
 
+  COLOR_BLUE = c4d.Vector(0.5, 0.6, 0.9)
   COLOR_RED = c4d.Vector(0.9, 0.3, 0.3)
   COLOR_YELLOW = c4d.Vector(0.9, 0.8, 0.6)
 
@@ -698,6 +699,7 @@ class UserDataToDescriptionResourceConverterDialog(BaseDialog):
     cnv.autofill()
     files = cnv.files()
 
+    overwrite = self.GetBool(self.ID_OVERWRITE)
     parent = os.path.dirname(files.pop('directory'))
     files = sorted(files.items(), key=lambda x: x[1].lower())
 
@@ -715,7 +717,7 @@ class UserDataToDescriptionResourceConverterDialog(BaseDialog):
         if entry['data'][0] in cnv.optional_file_ids():
           color = self.COLOR_YELLOW
         else:
-          color = self.COLOR_RED
+          color = self.COLOR_BLUE if overwrite else self.COLOR_RED
         self.SetColor(widget_id, c4d.COLOR_TEXT, color)
     self.LayoutChanged(self.ID_FILELIST_GROUP)
 
@@ -844,7 +846,7 @@ class UserDataToDescriptionResourceConverterDialog(BaseDialog):
     if virtual_id in (
       # Check if anything changed that would have an influence on the filelist.
         self.ID_PLUGIN_NAME, self.ID_RESOURCE_NAME, self.ID_DIRECTORY,
-        self.ID_ICON_FILE, self.ID_LINK, self.ID_MODE):
+        self.ID_ICON_FILE, self.ID_LINK, self.ID_MODE, self.ID_OVERWRITE):
       self.update_filelist()
 
     if virtual_id in (self.ID_LINK, self.ID_DIRECTORY, self.ID_PLUGIN_ID):
