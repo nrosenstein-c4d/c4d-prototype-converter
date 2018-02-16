@@ -1,18 +1,33 @@
-## c4d-prototype-converter
+## Cinema 4D Prototype Converter
 
 ![](https://img.shields.io/badge/License-MIT-yellow.svg)
 
-A Cinema 4D plugin to convert plugin prototypes (Python Generator/Tag)
-to actual Python plugins.
+This plugin aids you in converting your Cinema 4D Python plugin prototype
+to a plugin.
 
-__In development__
+![](https://i.imgur.com/VcgkutH.png)
 
-* UserData to Description Resource (.res) Converter
+### Features
 
-__Planned__
+* Converts UserData to Cinema 4D description resource files
+* Generates a Python plugin template file
 
-* Script to CommandData Converter
-* Python Generator Object to ObjectData Converter
-* Python Expression Tag to TagData Converter
+### Planned Features
+
+* Automatic conversion of Python Generators to ObjectData plugins (and alike) \*
+* A tool to convert Scripts to CommandData plugins \*
+* Reporting of possible errors during conversion (eg. referencing the
+  variables `doc` or `op` in global functions without previously declaring
+  them)
+* Automatically replacing references to `op[c4d.ID_USERDATA, X]` syntax with
+  the respectively automatically generated resource symbol
+
+> \* Milestones set by the sponsors.
+
+### Acknowledgements
 
 This project is sponsored by Maxon US.
+
+---
+
+<p align="center">Copyright &copy 2018 Niklas Rosenstein</p>
