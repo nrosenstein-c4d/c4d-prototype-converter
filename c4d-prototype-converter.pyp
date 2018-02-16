@@ -827,12 +827,15 @@ class UserDataConverter(object):
         typename = 'BOOL'
         if default is not None:
           props.append('DEFAULT 1;' if default else 'DEFAULT 0;')
-      elif dtype == c4d.DTYPE_LONG:
+
+      elif dtype in (c4d.DTYPE_LONG, c4d.DTYPE_REAL):
         # TODO: Support for min/max values
-        # TODO: Support for cycle/slider
-        typename = 'LONG'
+        typename = 'LONG' if dtype == c4d.DTYPE_LONG else 'REAL'
+        typecast = int if dtype == c4d.DTYPE_LONG else float
         cycle = bc[c4d.DESC_CYCLE]
-        if cycle:
+        has_cycle = False
+        if dtype == c4d.DTYPE_LONG and cycle:
+          has_cycle = True
           cycle_lines = []
           default_name = None
           if isinstance(default, int):
@@ -844,52 +847,76 @@ class UserDataConverter(object):
             props.append('DEFAULT {};'.format(symbol_map.get_cycle_symbol(node, default_name)))
           elif isinstance(default, int):
             props.append('DEFAULT {};'.format(int(default)))
-        else:
-          if isinstance(default, int):
-            props.append('DEFAULT {};'.format(int(default)))
+        elif isinstance(default, (int, float)):
+          props.append('DEFAULT {};'.format(typecast(default)))
+
+        if bc[c4d.DESC_CUSTOMGUI] == c4d.CUSTOMGUI_LONGSLIDER:
+          props.append('CUSTOMGUI LONGSLIDER;')
+        elif bc[c4d.DESC_CUSTOMGUI] == c4d.CUSTOMGUI_CYCLEBUTTON:
+          props.append('CUSTOMGUI CYCLEBUTTON;')
+        elif bc[c4d.DESC_CUSTOMGUI] == c4d.CUSTOMGUI_REALSLIDER:
+          props.append('CUSTOMGUI REALSLIDER;')
+        elif bc[c4d.DESC_CUSTOMGUI] == c4d.CUSTOMGUI_REALSLIDERONLY:
+          props.append('CUSTOMGUI REALSLIDERONLY;')
+
+        if not has_cycle:
+          if bc.GetType(c4d.DESC_MIN) == dtype:
+            props.append('MIN {};'.format(bc[c4d.DESC_MIN]))
+          if bc.GetType(c4d.DESC_MAX) == dtype:
+            props.append('MAX {};'.format(bc[c4d.DESC_MAX]))
+
+          if bc[c4d.DESC_CUSTOMGUI] in (c4d.CUSTOMGUI_LONGSLIDER, c4d.CUSTOMGUI_REALSLIDER, c4d.CUSTOMGUI_REALSLIDERONLY):
+            if bc.GetType(c4d.DESC_MINSLIDER) == dtype:
+              props.append('MINSLIDER {};'.format(bc[c4d.DESC_MINSLIDER]))
+            if bc.GetType(c4d.DESC_MAXSLIDER) == dtype:
+              props.append('MAXSLIDER {};'.format(bc[c4d.DESC_MAXSLIDER]))
+
       elif dtype == c4d.DTYPE_BUTTON:
         typename = 'BUTTON'
-      elif dtype == c4d.DTYPE_COLOR:
-        # TODO: Support for min/max values
-        typename = 'COLOR'
+
+      elif dtype in (c4d.DTYPE_COLOR, c4d.DTYPE_VECTOR):
+        typename = 'COLOR' if dtype == c4d.DTYPE_COLOR else 'VECTOR'
+        vecprop = lambda n, x: '{0} {1.x} {1.y} {1.z};'.format(n, x)
         if isinstance(default, c4d.Vector):
-          props.append('DEFAULT {0.x} {0.y} {0.z};'.format(default))
+          props.append(vecprop('DEFAULT', default))
+        if bc.GetType(c4d.DESC_MIN) in (c4d.DTYPE_COLOR, c4d.DTYPE_VECTOR):
+          props.append(vecprop('MIN', bc.GetVector(c4d.DESC_MIN)))
+        if bc.GetType(c4d.DESC_MAX) in (c4d.DTYPE_COLOR, c4d.DTYPE_VECTOR):
+          props.append(vecprop('MAX', bc.GetVector(c4d.DESC_MAX)))
+
       elif dtype == c4d.DTYPE_FILENAME:
         typename = 'FILENAME'
-      elif dtype == c4d.DTYPE_REAL:
-        # TODO: Support for min/max values
-        # TODO: Support for slider
-        typename = 'REAL'
-        if isinstance(default, float):
-          props.append('DEFAULT {};'.format(default))
-      elif dtype == c4d.DTYPE_GRADIENT:
+
+      elif dtype == c4d.CUSTOMDATATYPE_GRADIENT:
         typename = 'GRADIENT'
+
       elif dtype == c4d.CUSTOMDATATYPE_INEXCLUDE:
         typename = 'IN_EXCLUDE'
+
       elif dtype == c4d.DTYPE_BASELISTLINK:
         typename = 'LINK'
         # TODO: Support for link field refuse/accept
+
       elif dtype == c4d.CUSTOMDATATYPE_SPLINE:
         typename = 'SPLINE'
+
       elif dtype == c4d.DTYPE_STRING:
         typename = 'STRING'
+
       elif dtype == c4d.DTYPE_TIME:
         # TODO: Support for min/max values
         typename = 'TIME'
-      elif dtype == c4d.DTYPE_VECTOR:
-        # TODO: Support for min/max values
-        typename = 'VECTOR'
-        if isinstance(default, c4d.Vector):
-          props.append('DEFAULT {0.x} {0.y} {0.z};'.format(default))
+
       elif dtype == c4d.DTYPE_SEPARATOR:
         typename = 'SEPARATOR'
+
       else:
         print('Unhandled datatype:', dtype, '({})'.format(node['bc'][c4d.DESC_NAME]))
         return
 
       # TODO: Determine if newlines are used in props and render them indented
       #       on separate lines.
-      fp.write(self.indent * depth + '{} {{ {}}}\n'.format(typename, ' '.join(props) + (' ' if props else '')))
+      fp.write(self.indent * depth + '{} {} {{ {}}}\n'.format(typename, symbol, ' '.join(props) + (' ' if props else '')))
 
   def render_symbol_string(self, fp, node, symbol_map):
     if not node.data or node['descid'] == c4d.DescID(c4d.ID_USERDATA):
