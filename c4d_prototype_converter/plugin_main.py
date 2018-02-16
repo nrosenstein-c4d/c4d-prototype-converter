@@ -567,6 +567,8 @@ class UserDataConverter(object):
 
       elif dtype == c4d.DTYPE_SEPARATOR:
         typename = 'SEPARATOR'
+        if bc[c4d.DESC_SEPARATORLINE]:
+          props.append('LINE;')
 
       else:
         print('Unhandled datatype:', dtype, '({})'.format(node['bc'][c4d.DESC_NAME]))
