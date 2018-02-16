@@ -217,6 +217,27 @@ class Node(object):
   def __repr__(self):
     return '<Node data={!r}>'.format(self.data)
 
+  def __getitem__(self, key):
+    if isinstance(self.data, dict):
+      return self.data[key]
+    return getattr(self.data, key)
+
+  def __setitem__(self, key, value):
+    if isinstance(self.data, dict):
+      self.data[key] = value
+    else:
+      if hasattr(self.data, key):
+        setattr(self.data, key, value)
+      else:
+        raise AttributeError('{} has no attribute {}'.format(
+          type(self.data).__name__, key))
+
+  def get(self, key, default=None):
+    if isinstance(self.data, dict):
+      return self.data.get(key, default)
+    else:
+      return getattr(self.data, key, default)
+
   def add_child(self, node):
     node.remove()
     node.parent.set(self)
@@ -332,17 +353,17 @@ def userdata_tree(ud):
   groups.
   """
 
-  DataNode = Node[collections.namedtuple('Data', 'descid bc')]
+  DataNode = Node[dict]
   params = HashDict[hash_descid]()
   root = Node[None]()
 
   # Create a node for every parameter.
   for descid, bc in ud:
-    params[descid] = DataNode(descid, bc)
+    params[descid] = DataNode(descid=descid, bc=bc)
 
   # The main userdata group is not described in the UserData container.
   descid = c4d.DescID(c4d.DescLevel(c4d.ID_USERDATA, c4d.DTYPE_SUBCONTAINER, 0))
-  node = DataNode(descid, c4d.BaseContainer())
+  node = DataNode(descid=descid, bc=c4d.BaseContainer())
   params[descid] = node
   root.add_child(node)
 
@@ -536,34 +557,72 @@ class BaseDialog(c4d.gui.GeDialog):
 # ============================================================================
 
 
+class SymbolMap(object):
+  """
+  A map for User Data symbols used in the #UserDataConverter.
+  """
+
+  def __init__(self, prefix):
+    self.curr_id = 1000
+    self.symbols = collections.OrderedDict()
+    self.descid_to_symbol = HashDict[hash_descid]()
+    self.prefix = prefix
+
+  def translate_name(self, name, add_prefix=True, unique=True):
+    result = re.sub('[^\w\d_]+', '_', name).upper().strip('_')
+    if add_prefix:
+      result = self.prefix + result
+    if unique:
+      index = 0
+      while True:
+        symbol = result + (str(index) if index != 0 else '')
+        if symbol not in self.symbols: break
+        index += 1
+      result = symbol
+    return result
+
+  def allocate_symbol(self, node):
+    """
+    Expects a #Node[dict] as returned by #userdata_tree(). Assigns a symbol
+    to the node and registers its descid in this map.
+    """
+
+    # Find a unique name for the symbol.
+    name = node['bc'][c4d.DESC_SHORT_NAME] or node['bc'][c4d.DESC_NAME]
+    if node['descid'][-1].dtype == c4d.DTYPE_GROUP:
+      name += '_GROUP'
+    else:
+      parent = node.parent()
+      if parent.data:
+        parent_name = parent['bc'].GetString(c4d.DESC_NAME)
+        if parent_name:
+          name = parent_name + ' ' + name
+
+    symbol = self.translate_name(name)
+    value = self.curr_id
+    self.curr_id += 1
+    self.symbols[symbol] = value
+    descid = node['descid']
+    self.descid_to_symbol[descid] = symbol
+    node['symbol'] = (symbol, value)
+    return symbol, value
+
+  def get_cycle_symbol(self, node, cycle_name):
+    """
+    Constructs the symbolic name of a value in a cycle parameter.
+    """
+
+    symbol = node.get('symbol', (None, None))[0]
+    if not symbol:
+      symbol = self.allocate_symbol(node)[0]
+    return symbol + '_' + self.translate_name(cycle_name, False, False)
+
+
 class UserDataConverter(object):
   """
   This object holds the information on how the description resource will
   be generated.
   """
-
-  class SymbolMap(object):
-
-    def __init__(self, prefix):
-      self.curr_id = 1000
-      self.symbols = collections.OrderedDict()
-      self.descid_to_symbol = HashDict[hash_descid]()
-      self.prefix = prefix
-
-    def get_unique_symbol(self, descid, name, value=None):
-      base = self.prefix + re.sub('[^\w\d_]+', '_', name).upper().rstrip('_')
-      index = 0
-      while True:
-        symbol = base + (str(index) if index != 0 else '')
-        if symbol not in self.symbols: break
-        index += 1
-      if value is None:
-        value = self.curr_id
-        self.curr_id += 1
-      self.symbols[symbol] = value
-      if descid is not None:
-        self.descid_to_symbol[descid] = symbol
-      return symbol, value
 
   def __init__(self, link, plugin_name, plugin_id, resource_name,
                symbol_prefix, icon_file, directory, indent='  '):
@@ -644,12 +703,13 @@ class UserDataConverter(object):
         fp.write('#pragma once\nenum {\n};\n')
 
     ud = self.link.GetUserDataContainer()
-    symbol_map = self.SymbolMap(self.symbol_prefix)
+    symbol_map = SymbolMap(self.symbol_prefix)
     ud_tree = userdata_tree(ud)
     ud_main_group = next((
       x for x in ud_tree.children
-      if x.data.descid == c4d.DescID(c4d.ID_USERDATA)
+      if x['descid'] == c4d.DescID(c4d.ID_USERDATA)
     ))
+    ud_tree.visit(lambda x: symbol_map.allocate_symbol(x) if x != ud_main_group else None, False)
 
     # Render the symbols to the description header. This will also
     # initialize our symbols_map.
@@ -679,7 +739,7 @@ class UserDataConverter(object):
           self.render_parameter(fp, node, symbol_map, depth=2)
         fp.write(self.indent + '}\n')
       for node in ud_tree.children:
-        if node.data.descid == c4d.DescID(c4d.ID_USERDATA): continue
+        if node['descid'] == c4d.DescID(c4d.ID_USERDATA): continue
         self.render_parameter(fp, node, symbol_map)
       fp.write('}\n')
 
@@ -709,33 +769,24 @@ class UserDataConverter(object):
       shutil.copy(self.icon_file, files['icon'])
 
   def render_symbol(self, fp, node, symbol_map):
-    if not node.data or node.data.descid == c4d.DescID(c4d.ID_USERDATA):
+    if not node.data or node['descid'] == c4d.DescID(c4d.ID_USERDATA):
       return
-    # Find a unique name for the symbol.
-    name = node.data.bc[c4d.DESC_SHORT_NAME]
-    if node.data.descid[-1].dtype == c4d.DTYPE_GROUP:
-      name += '_GROUP'
-    else:
-      parent = node.parent()
-      if parent.data:
-        parent_name = parent.data.bc.GetString(c4d.DESC_NAME)
-        if parent_name:
-          name = parent_name + ' ' + name
 
-    sym, value = symbol_map.get_unique_symbol(node.data.descid, name)
+    sym, value = node['symbol']
     fp.write(self.indent + '{} = {},\n'.format(sym, value))
-    children = node.data.bc.GetContainerInstance(c4d.DESC_CYCLE)
+
+    children = node['bc'].GetContainerInstance(c4d.DESC_CYCLE)
     if children:
       for value, name in children:
-        child_sym = symbol_map.get_unique_symbol(None, sym + '_' + name, value)[0]
-        fp.write(self.indent * 2 + '{} = {},\n'.format(child_sym, value))
+        sym = symbol_map.get_cycle_symbol(node, name)
+        fp.write(self.indent * 2 + '{} = {},\n'.format(sym, value))
 
     return sym
 
   def render_parameter(self, fp, node, symbol_map, depth=1):
-    bc = node.data.bc
-    symbol = symbol_map.descid_to_symbol[node.data.descid]
-    dtype = node.data.descid[-1].dtype
+    bc = node['bc']
+    symbol = symbol_map.descid_to_symbol[node['descid']]
+    dtype = node['descid'][-1].dtype
     if dtype == c4d.DTYPE_GROUP:
       fp.write(self.indent * depth + 'GROUP {} {{\n'.format(symbol))
       for child in node.children:
@@ -759,8 +810,22 @@ class UserDataConverter(object):
         # TODO: Support for min/max values
         # TODO: Support for cycle/slider
         typename = 'LONG'
-        if isinstance(default, int):
-          props.append('DEFAULT {};'.format(int(default)))
+        cycle = bc[c4d.DESC_CYCLE]
+        if cycle:
+          cycle_lines = []
+          default_name = None
+          if isinstance(default, int):
+            default_name = cycle.GetString(default)
+          for _, name in cycle:
+            cycle_lines.append(symbol_map.get_cycle_symbol(node, name) + ';')
+          props.append('CYCLE {\n' + (self.indent+'\n').join(cycle_lines) + '\n}')
+          if default_name:
+            props.append('DEFAULT {};'.format(symbol_map.get_cycle_symbol(node, default_name)))
+          elif isinstance(default, int):
+            props.append('DEFAULT {};'.format(int(default)))
+        else:
+          if isinstance(default, int):
+            props.append('DEFAULT {};'.format(int(default)))
       elif dtype == c4d.DTYPE_BUTTON:
         typename = 'BUTTON'
       elif dtype == c4d.DTYPE_COLOR:
@@ -798,17 +863,22 @@ class UserDataConverter(object):
       elif dtype == c4d.DTYPE_SEPARATOR:
         typename = 'SEPARATOR'
       else:
-        print('Unhandled datatype:', dtype, '({})'.format(node.data.bc[c4d.DESC_NAME]))
+        print('Unhandled datatype:', dtype, '({})'.format(node['bc'][c4d.DESC_NAME]))
         return
 
+      # TODO: Determine if newlines are used in props and render them indented
+      #       on separate lines.
       fp.write(self.indent * depth + '{} {{ {}}}\n'.format(typename, ' '.join(props) + (' ' if props else '')))
 
   def render_symbol_string(self, fp, node, symbol_map):
-    if not node.data or node.data.descid == c4d.DescID(c4d.ID_USERDATA):
+    if not node.data or node['descid'] == c4d.DescID(c4d.ID_USERDATA):
       return
     # TODO: Escape special characters.
-    symbol = symbol_map.descid_to_symbol[node.data.descid]
-    fp.write(self.indent + '{} "{}";\n'.format(symbol, node.data.bc[c4d.DESC_NAME]))
+    symbol = symbol_map.descid_to_symbol[node['descid']]
+    fp.write(self.indent + '{} "{}";\n'.format(symbol, node['bc'][c4d.DESC_NAME]))
+    cycle = node['bc'][c4d.DESC_CYCLE]
+    for __, name in (cycle or []):
+      fp.write(self.indent * 2 + '{} "{}";\n'.format(symbol_map.get_cycle_symbol(node, name), name))
 
 
 class UserDataToDescriptionResourceConverterDialog(BaseDialog):
@@ -944,8 +1014,14 @@ class UserDataToDescriptionResourceConverterDialog(BaseDialog):
     self.GroupBorderSpace(4, 4, 4, 4)
     self.GroupEnd()  # } MAIN/RIGHT
     self.GroupEnd()  # } MAIN
+
+    # Initialize values.
+    self.SetLink(self.ID_LINK, c4d.documents.GetActiveDocument().GetActiveObject())
+
+    # Update UI.
     self.update_filelist()
     self.update_create_enabling()
+
     return True
 
   def Command(self, param_id, bc):
