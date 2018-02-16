@@ -453,6 +453,14 @@ class UserDataConverter(object):
     dtype = node['descid'][-1].dtype
     if dtype == c4d.DTYPE_GROUP:
       fp.write(self.indent * depth + 'GROUP {} {{\n'.format(symbol))
+      if bc[c4d.DESC_DEFAULT]:
+        fp.write(self.indent * (depth+1) + 'DEFAULT 1;\n')
+      if bc[c4d.DESC_TITLEBAR]:
+        pass # TODO
+      if bc.GetInt32(c4d.DESC_COLUMNS) not in (0, 1):
+        fp.write(self.indent * (depth+1) + 'COLUMNS {};\n'.format(bc[c4d.DESC_COLUMNS]))
+      if bc[c4d.DESC_GROUPSCALEV]:
+        fp.write(self.indent * (depth+1) + 'SCALE_V;\n')
       for child in node.children:
         self.render_parameter(fp, child, symbol_map, depth+1)
       fp.write(self.indent * depth + '}\n')
@@ -539,22 +547,25 @@ class UserDataConverter(object):
         typename = 'IN_EXCLUDE'
 
       elif dtype == c4d.DTYPE_BASELISTLINK:
-        typename = 'LINK'
-        refuse = bc[c4d.DESC_REFUSE]
-        if refuse:
-          props.append('REFUSE { ' + ' '.join(
-            (refuse_name if refuse_name else str(refuse_id)) + ';'
-            for refuse_id, refuse_name in refuse
-          ) + ' }')
-        accept = bc[c4d.DESC_ACCEPT]
-        if accept:
-          props.append('ACCEPT { ' + ' '.join(
-            (accept_id if accept_name else str(accept_id)) + ';'
-            for accept_id, accept_name in accept
-            if accept_id != c4d.Tbaselist2d
-          ) + ' }')
-          if props[-1] == 'ACCEPT {  }':
-            props.pop()
+        if bc[c4d.DESC_CUSTOMGUI] == c4d.CUSTOMGUI_TEXBOX:
+          typename = 'SHADERLINK'
+        else:
+          typename = 'LINK'
+          refuse = bc[c4d.DESC_REFUSE]
+          if refuse:
+            props.append('REFUSE { ' + ' '.join(
+              (refuse_name if refuse_name else str(refuse_id)) + ';'
+              for refuse_id, refuse_name in refuse
+            ) + ' }')
+          accept = bc[c4d.DESC_ACCEPT]
+          if accept:
+            props.append('ACCEPT { ' + ' '.join(
+              (accept_id if accept_name else str(accept_id)) + ';'
+              for accept_id, accept_name in accept
+              if accept_id != c4d.Tbaselist2d
+            ) + ' }')
+            if props[-1] == 'ACCEPT {  }':
+              props.pop()
 
       elif dtype == c4d.CUSTOMDATATYPE_SPLINE:
         typename = 'SPLINE'
