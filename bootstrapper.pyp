@@ -37,4 +37,6 @@ del blob, b, t, z, m;
 
 with localimport('.') as _importer:
   _importer.disable('c4d_prototype_converter')
-  import c4d_prototype_converter
+  from c4d_prototype_converter import main
+  if __name__ == '__main__':
+    main()

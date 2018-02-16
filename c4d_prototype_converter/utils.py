@@ -20,4 +20,44 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-from .plugin_main import main
+import errno
+import os
+import weakref
+
+
+class nullable_ref(object):
+  '''
+  A weak-reference type that can represent #None.
+  '''
+
+  def __init__(self, obj):
+    self.set(obj)
+
+  def __repr__(self):
+    return '<nullable_ref to {!r}>'.format(self())
+
+  def __call__(self):
+    if self._ref is not None:
+      return self._ref()
+    return None
+
+  def __bool__(self):
+    return self._ref is not None
+
+  __nonzero__ = __bool__
+
+  def set(self, obj):
+    self._ref = weakref.ref(obj) if obj is not None else None
+
+
+def makedirs(path, raise_on_exists=False):
+  '''
+  Like #os.makedirs(), but by default this function does not raise an
+  exception if the directory already exists.
+  '''
+
+  try:
+    os.makedirs(path)
+  except OSError as exc:
+    if raise_on_exists or exc.errno != errno.EEXIST:
+      raise

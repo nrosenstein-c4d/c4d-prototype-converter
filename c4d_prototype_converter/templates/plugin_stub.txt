@@ -24,8 +24,16 @@ class {{ plugin_class }}(c4d.plugins.{{ plugin_type }}Data):
   @classmethod
   def Register(cls):
     return c4d.plugins.Register{{ plugin_type }}Plugin(
+      {%- if plugin_type == 'Object' -%}
+      cls.PLUGIN_ID, cls.PLUGIN_NAME, cls, cls.PLUGIN_DESC, cls.PLUGIN_INFO,
+      cls.PLUGIN_ICON, cls.PLUGIN_DISKLEVEL)
+      {%- elif plugin_type == 'Tag' -%}
       cls.PLUGIN_ID, cls.PLUGIN_NAME, cls.PLUGIN_INFO, cls, cls.PLUGIN_DESC,
       cls.PLUGIN_ICON, cls.PLUGIN_DISKLEVEL)
+      {%- elif plugin_type == 'Shader' -%}
+      cls.PLUGIN_ID, cls.PLUGIN_NAME, cls.PLUGIN_INFO, cls, cls.PLUGIN_DESC,
+      cls.PLUGIN_DISKLEVEL)
+      {%- endif -%}
 
   def Init(self, node):
     pass

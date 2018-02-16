@@ -20,4 +20,15 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-from .plugin_main import main
+import re
+
+
+def little_jinja(template_string, context):
+  """
+  Renders a template that uses `{{ expr }}` syntax using the specified
+  *context*. The `expr` will be evaluated as a pure Python expression.
+  """
+
+  def callback(match):
+    return str(eval(match.group(1), context))
+  return re.sub('\{\{(.*?)\}\}', callback, template_string)
