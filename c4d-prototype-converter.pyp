@@ -1012,6 +1012,8 @@ class UserDataToDescriptionResourceConverterDialog(BaseDialog):
   INDENT_2SPACE = 1
   INDENT_4SPACE = 2
 
+  COLOR_RED = c4d.Vector(0.8, 0.3, 0.3)
+
   def get_converter(self):
     return UserDataConverter(
       link = self.GetLink(self.ID_LINK),
@@ -1043,7 +1045,7 @@ class UserDataToDescriptionResourceConverterDialog(BaseDialog):
       self.AddStaticText(widget_id, c4d.BFH_LEFT, name=name)
       full_path = os.path.join(parent, entry['path'])
       if not entry['isdir'] and os.path.isfile(full_path):
-        self.SetColor(widget_id, c4d.COLOR_TEXT, c4d.Vector(0.8, 0.3, 0.3))
+        self.SetColor(widget_id, c4d.COLOR_TEXT, self.COLOR_RED)
     self.LayoutChanged(self.ID_FILELIST_GROUP)
 
     self.SetString(self.ID_SYMBOL_PREFIX, cnv.symbol_prefix, False, c4d.EDITTEXT_HELPTEXT)
@@ -1067,7 +1069,7 @@ class UserDataToDescriptionResourceConverterDialog(BaseDialog):
       enabled = False
 
     for param_id in ids:
-      color = c4d.Vector(0.8, 0.3, 0.3) if param_id in invalids else None
+      color = self.COLOR_RED if param_id in invalids else None
       self.SetColor(param_id, c4d.COLOR_TEXT, color)
 
     self.Enable(self.ID_CREATE, not invalids)
