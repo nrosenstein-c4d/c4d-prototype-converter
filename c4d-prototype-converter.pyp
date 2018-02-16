@@ -267,12 +267,12 @@ class Node(object):
     if with_root and post_order:
       func(self)
 
-  @property
-  def depth(self):
+  def depth(self, stop_cond=None):
     count = 0
     while True:
       self = self.parent()
       if not self: break
+      if stop_cond is not None and stop_cond(self): break
       count += 1
     return count
 
@@ -1034,13 +1034,9 @@ class UserDataToDescriptionResourceConverterDialog(BaseDialog):
 
     self.LayoutFlushGroup(self.ID_FILELIST_GROUP)
     for entry in file_tree(files, parent=parent, flat=True):
-      depth = 0
-      parent = entry.parent()
-      while parent:
-        depth += 1
-        parent = parent.parent()
-      name = '  ' * depth + os.path.basename(entry.data.path)
-      if entry.data.isdir:
+      depth = entry.depth()
+      name = '  ' * depth + os.path.basename(entry['path'])
+      if entry['isdir']:
         name += '/'
       self.AddStaticText(0, c4d.BFH_LEFT, name=name)
     self.LayoutChanged(self.ID_FILELIST_GROUP)
