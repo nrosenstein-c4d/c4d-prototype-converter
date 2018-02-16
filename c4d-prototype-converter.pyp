@@ -1007,10 +1007,15 @@ class UserDataToDescriptionResourceConverterDialog(BaseDialog):
   ID_LINK_TEXT = 1012
   ID_PLUGIN_ID_TEXT = 1013
   ID_DIRECTORY_TEXT = 1014
+  ID_MODE = 1015
 
   INDENT_TAB = 0
   INDENT_2SPACE = 1
   INDENT_4SPACE = 2
+
+  MODE_ALL = 0
+  MODE_RESOURCE = 1
+  MODE_PLUGINSTUB = 2
 
   COLOR_RED = c4d.Vector(0.8, 0.3, 0.3)
 
@@ -1093,9 +1098,29 @@ class UserDataToDescriptionResourceConverterDialog(BaseDialog):
   def CreateLayout(self):
     self.SetTitle('UserData to Description Resource (.res) Converter')
     self.GroupBorderSpace(6, 6, 6, 6)
-    self.GroupBegin(0, c4d.BFH_SCALEFIT | c4d.BFV_SCALEFIT, 0, 1)  # MAIN {
+    self.GroupBegin(0, c4d.BFH_SCALEFIT | c4d.BFV_TOP, 0, 1)  # MAIN {
     self.GroupBegin(0, c4d.BFH_SCALEFIT | c4d.BFV_SCALEFIT, 1, 0)  # MAIN/LEFT {
-    self.GroupBegin(0, c4d.BFH_SCALEFIT | c4d.BFV_FIT, 2, 0)  # MAIN/LEFT/PARAMS {
+    self.GroupBegin(0, c4d.BFH_SCALEFIT | c4d.BFV_SCALEFIT, 1, 0)  # MAIN/LEFT/PARAMS {
+
+    self.GroupBegin(0, c4d.BFH_SCALEFIT | c4d.BFV_FIT, 2, 0, title='Export')  # MAIN/LEFT/PARAMS/EXPORTSETTINGS {
+    self.GroupBorder(c4d.BORDER_THIN_IN)
+    self.GroupBorderSpace(6, 6, 6, 6)
+    self.AddStaticText(0, c4d.BFH_LEFT, name='Mode')
+    self.AddComboBox(self.ID_MODE, c4d.BFH_SCALEFIT)
+    self.AddChild(self.ID_MODE, self.MODE_ALL, 'Resource Files + Plugin Stub')
+    self.AddChild(self.ID_MODE, self.MODE_RESOURCE, 'Resource Files')
+    self.AddChild(self.ID_MODE, self.MODE_PLUGINSTUB, 'Plugin Stub')
+    self.AddStaticText(0, c4d.BFH_LEFT, name='Indentation')
+    self.AddComboBox(self.ID_INDENT, c4d.BFH_LEFT)
+    self.AddChild(self.ID_INDENT, self.INDENT_TAB, 'Tab')
+    self.AddChild(self.ID_INDENT, self.INDENT_2SPACE, '2 Spaces')
+    self.AddChild(self.ID_INDENT, self.INDENT_4SPACE, '4 Spaces')
+    self.AddCheckbox(self.ID_OVERWRITE, c4d.BFH_LEFT, 0, 0, name='Overwrite')
+    self.GroupEnd() # # } MAIN/LEFT/PARAMS/EXPORTSETTINGS
+
+    self.GroupBegin(0, c4d.BFH_SCALEFIT | c4d.BFV_FIT, 2, 0, title='Plugin')  # MAIN/LEFT/PARAMS/PLUGIN {
+    self.GroupBorder(c4d.BORDER_THIN_IN)
+    self.GroupBorderSpace(6, 6, 6, 6)
     self.AddStaticText(self.ID_LINK_TEXT, c4d.BFH_LEFT, name='Source *')
     self.AddLinkBoxGui(self.ID_LINK, c4d.BFH_SCALEFIT)
     self.AddStaticText(0, c4d.BFH_LEFT, name='Plugin Name')
@@ -1110,23 +1135,24 @@ class UserDataToDescriptionResourceConverterDialog(BaseDialog):
     self.AddFileSelector(self.ID_ICON_FILE, c4d.BFH_SCALEFIT, type='load')
     self.AddStaticText(self.ID_DIRECTORY_TEXT, c4d.BFH_LEFT, name='Plugin Directory *')
     self.AddFileSelector(self.ID_DIRECTORY, c4d.BFH_SCALEFIT, type='directory')
-    self.AddStaticText(0, c4d.BFH_LEFT, name='Indentation')
-    self.AddComboBox(self.ID_INDENT, c4d.BFH_LEFT)
-    self.AddChild(self.ID_INDENT, self.INDENT_TAB, 'Tab')
-    self.AddChild(self.ID_INDENT, self.INDENT_2SPACE, '2 Spaces')
-    self.AddChild(self.ID_INDENT, self.INDENT_4SPACE, '4 Spaces')
-    self.AddCheckbox(self.ID_OVERWRITE, c4d.BFH_LEFT, 0, 0, name='Overwrite')
-    self.GroupBegin(0, c4d.BFH_CENTER, 0, 1) # MAIN/LEFT/PARAMS/BUTTONS {
-    self.AddButton(self.ID_CREATE, c4d.BFH_CENTER, name='Create')
-    self.AddButton(self.ID_CANCEL, c4d.BFH_CENTER, name='Cancel')
-    self.GroupEnd()  # } MAIN/LEFT/PARAMS/BUTTONS
+    self.GroupEnd() # # } MAIN/LEFT/PARAMS/EXPORTSETTINGS
+
     self.GroupEnd()  # } MAIN/LEFT/PARAMS
     self.GroupEnd()  # } MAIN/LEFT
-    self.AddSeparatorV(0, c4d.BFV_SCALEFIT)
-    self.GroupBegin(self.ID_FILELIST_GROUP, c4d.BFH_RIGHT | c4d.BFV_SCALEFIT, 1, 0) # MAIN/RIGHT {
-    self.GroupBorderSpace(4, 4, 4, 4)
+
+    self.GroupBegin(self.ID_FILELIST_GROUP, c4d.BFH_RIGHT | c4d.BFV_FIT, 1, 0, title='Filelist') # MAIN/RIGHT {
+    self.GroupBorder(c4d.BORDER_THIN_IN)
+    self.GroupBorderSpace(6, 6, 6, 6)
     self.GroupEnd()  # } MAIN/RIGHT
     self.GroupEnd()  # } MAIN
+
+
+    self.GroupBegin(0, c4d.BFH_SCALEFIT, 0, 1) # MAIN/LEFT/PARAMS/BUTTONS {
+    self.AddButton(self.ID_CREATE, c4d.BFH_CENTER, name='Create')
+    self.AddStaticText(0, c4d.BFH_SCALEFIT)
+    self.AddButton(self.ID_CANCEL, c4d.BFH_CENTER, name='Cancel')
+    self.GroupEnd()  # } MAIN/LEFT/PARAMS/BUTTONS
+
 
     # Initialize values.
     self.SetLink(self.ID_LINK, c4d.documents.GetActiveDocument().GetActiveObject())
