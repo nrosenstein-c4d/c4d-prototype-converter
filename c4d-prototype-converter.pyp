@@ -1126,6 +1126,8 @@ class UserDataToDescriptionResourceConverterDialog(BaseDialog):
     elif cnv.indent == '    ':
       self.SetInt32(self.ID_INDENT, self.INDENT_4SPACE)
     print('Loaded settings from object "{}".'.format(cnv.link.GetName()))
+    self.update_filelist()
+    self.update_enabling()
 
   def update_filelist(self):
     cnv = self.get_converter()
@@ -1255,9 +1257,9 @@ class UserDataToDescriptionResourceConverterDialog(BaseDialog):
     self.SetLink(self.ID_LINK, c4d.documents.GetActiveDocument().GetActiveObject())
     self.load_settings()
 
-    # Update UI.
-    self.update_filelist()
-    self.update_enabling()
+    # Automatically called at the end of #load_settings().
+    #self.update_filelist()
+    #self.update_enabling()
 
     return True
 
