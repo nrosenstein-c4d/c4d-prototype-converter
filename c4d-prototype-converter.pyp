@@ -920,6 +920,9 @@ class UserDataToDescriptionResourceConverterDialog(BaseDialog):
   ID_OVERWRITE = 1009
   ID_PLUGIN_ID = 1010
   ID_INDENT = 1011
+  ID_LINK_TEXT = 1012
+  ID_PLUGIN_ID_TEXT = 1013
+  ID_DIRECTORY_TEXT = 1014
 
   INDENT_TAB = 0
   INDENT_2SPACE = 1
@@ -962,25 +965,27 @@ class UserDataToDescriptionResourceConverterDialog(BaseDialog):
     self.SetString(self.ID_RESOURCE_NAME, cnv.resource_name, False, c4d.EDITTEXT_HELPTEXT)
     self.SetString(self.ID_PLUGIN_NAME, cnv.plugin_name, False, c4d.EDITTEXT_HELPTEXT)
 
-  def update_create_enabling(self):
-    # TODO: We could also update the default color of the parameters
-    #        to visually indicate which parameters need to be filled.
-    enabled = True
-    ids = [self.ID_LINK, self.ID_DIRECTORY, self.ID_PLUGIN_ID]
+  def update_enabling(self):
+    ids = [self.ID_LINK_TEXT, self.ID_DIRECTORY_TEXT, self.ID_PLUGIN_ID_TEXT]
     invalids = []
+
     if self.GetLink(self.ID_LINK) is None:
-      invalids.append(self.ID_LINK)
+      invalids.append(self.ID_LINK_TEXT)
       enabled = False
+
     if not self.GetFileSelectorString(self.ID_DIRECTORY):
-      invalids.append(self.ID_DIRECTORY)
+      invalids.append(self.ID_DIRECTORY_TEXT)
       enabled = False
+
     if not self.GetString(self.ID_PLUGIN_ID).isdigit():
-      invalids.append(self.ID_PLUGIN_ID)
+      invalids.append(self.ID_PLUGIN_ID_TEXT)
       enabled = False
+
     for param_id in ids:
-      color = c4d.Vector(0.8, 0.1, 0.1) if param_id in invalids else None
-      self.SetColor(param_id, c4d.COLOR_BG, color)
-    self.Enable(self.ID_CREATE, enabled)
+      color = c4d.Vector(0.8, 0.3, 0.3) if param_id in invalids else None
+      self.SetColor(param_id, c4d.COLOR_TEXT, color)
+
+    self.Enable(self.ID_CREATE, not invalids)
 
   def do_create(self):
     cnv = self.get_converter()
@@ -1004,11 +1009,11 @@ class UserDataToDescriptionResourceConverterDialog(BaseDialog):
     self.GroupBegin(0, c4d.BFH_SCALEFIT | c4d.BFV_SCALEFIT, 0, 1)  # MAIN {
     self.GroupBegin(0, c4d.BFH_SCALEFIT | c4d.BFV_SCALEFIT, 1, 0)  # MAIN/LEFT {
     self.GroupBegin(0, c4d.BFH_SCALEFIT | c4d.BFV_FIT, 2, 0)  # MAIN/LEFT/PARAMS {
-    self.AddStaticText(0, c4d.BFH_LEFT, name='Source *')
+    self.AddStaticText(self.ID_LINK_TEXT, c4d.BFH_LEFT, name='Source *')
     self.AddLinkBoxGui(self.ID_LINK, c4d.BFH_SCALEFIT)
     self.AddStaticText(0, c4d.BFH_LEFT, name='Plugin Name')
     self.AddEditText(self.ID_PLUGIN_NAME, c4d.BFH_SCALEFIT)
-    self.AddStaticText(0, c4d.BFH_LEFT, name='Plugin ID *')
+    self.AddStaticText(self.ID_PLUGIN_ID_TEXT, c4d.BFH_LEFT, name='Plugin ID *')
     self.AddEditText(self.ID_PLUGIN_ID, c4d.BFH_LEFT, 100)
     self.AddStaticText(0, c4d.BFH_LEFT, name='Resource Name')
     self.AddEditText(self.ID_RESOURCE_NAME, c4d.BFH_SCALEFIT)
@@ -1016,7 +1021,7 @@ class UserDataToDescriptionResourceConverterDialog(BaseDialog):
     self.AddEditText(self.ID_SYMBOL_PREFIX, c4d.BFH_SCALEFIT)
     self.AddStaticText(0, c4d.BFH_LEFT, name='Icon')
     self.AddFileSelector(self.ID_ICON_FILE, c4d.BFH_SCALEFIT, type='load')
-    self.AddStaticText(0, c4d.BFH_LEFT, name='Plugin Directory *')
+    self.AddStaticText(self.ID_DIRECTORY_TEXT, c4d.BFH_LEFT, name='Plugin Directory *')
     self.AddFileSelector(self.ID_DIRECTORY, c4d.BFH_SCALEFIT, type='directory')
     self.AddStaticText(0, c4d.BFH_LEFT, name='Indentation')
     self.AddComboBox(self.ID_INDENT, c4d.BFH_LEFT)
@@ -1041,7 +1046,7 @@ class UserDataToDescriptionResourceConverterDialog(BaseDialog):
 
     # Update UI.
     self.update_filelist()
-    self.update_create_enabling()
+    self.update_enabling()
 
     return True
 
@@ -1062,7 +1067,7 @@ class UserDataToDescriptionResourceConverterDialog(BaseDialog):
 
     if virtual_id in (self.ID_LINK, self.ID_DIRECTORY, self.ID_PLUGIN_ID):
       # Update the create button's enable state.
-      self.update_create_enabling()
+      self.update_enabling()
 
     if virtual_id == self.ID_CREATE:
       self.do_create()
