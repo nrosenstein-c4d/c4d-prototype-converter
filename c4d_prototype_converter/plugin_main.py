@@ -1,3 +1,5 @@
+# The MIT License (MIT)
+#
 # Copyright (c) 2018 Niklas Rosenstein
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
