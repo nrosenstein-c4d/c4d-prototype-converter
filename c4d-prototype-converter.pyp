@@ -630,7 +630,7 @@ class BaseDialog(c4d.gui.GeDialog):
           return True
 
     # Update the text color if a text widget was changed.
-    if param in self.__edit_texts:
+    if param in self.__edit_texts and bc.GetType(c4d.BFM_ACTION_VALUE) != c4d.DA_NIL:
       color = None if bc[c4d.BFM_ACTION_VALUE] else self.helptext_color
       self.SetColor(param, c4d.COLOR_TEXT_EDIT, color)
 
