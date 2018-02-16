@@ -7,6 +7,12 @@ to a plugin.
 
 ![](https://i.imgur.com/ksdAjFp.png)
 
+__To do__
+
+* [ ] Support unit and step in REAL parameters
+* [ ] Support Longitude/Latitude customgui for REAL parameters
+* [ ] Support QuickTab & Radio customgui for LONG parameters
+
 ### Features
 
 * Converts UserData to Cinema 4D description resource files
