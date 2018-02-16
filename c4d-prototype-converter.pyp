@@ -315,28 +315,28 @@ def path_parents(path):
     prev = path
 
 
-def file_tree(files, parent=None, flat=False):
+def file_tree(items, parent=None, flat=False, key=None):
   """
   Produces a tree structure from a list of filenames. Returns a list of the
   root entries. If *flat* is set to #True, the returned list contains a flat
   version of all entries in the tree.
   """
 
-  DataNode = Node[collections.namedtuple('Data', 'path isdir')]
+  DataNode = Node[collections.namedtuple('Data', 'path isdir data')]
   entries = {}
 
-  files = (os.path.normpath(x) for x in files)
+  items = ((os.path.normpath(key(x)), x) for x in items)
   if parent:
-    files = (os.path.relpath(x, parent) for x in files)
+    items = [(os.path.relpath(k, parent), v) for k, v in items]
 
   if flat:
     order = []
-  for filename in files:
+  for filename, data in items:
     parent_entry = None
     for path in reversed(list(path_parents(filename))):
       entry = entries.get(path)
       if not entry:
-        entry = DataNode(path, path!=filename)
+        entry = DataNode(path, path!=filename, data)
         if parent_entry:
           parent_entry.add_child(entry)
         entries[path] = entry
@@ -759,24 +759,27 @@ class UserDataConverter(object):
 
   def files(self):
     f = lambda s: s.format(**sys._getframe(1).f_locals)
-    j = os.path.join
+    j = lambda *p: os.path.join(parent_dir, *p)
     parent_dir = self.directory or self.plugin_name
     plugin_filename = re.sub('[^\w\d]+', '-', self.plugin_name).lower()
     plugin_type_info = self.plugin_type_info()
     result = {'directory': parent_dir}
     if self.write_resources:
       result.update({
-        'c4d_symbols': j(parent_dir, 'res', 'c4d_symbols.h'),
-        'header': j(parent_dir, 'res', 'description', f('{self.resource_name}.h')),
-        'description': j(parent_dir, 'res', 'description', f('{self.resource_name}.res')),
-        'strings_us': j(parent_dir, 'res', 'strings_us', 'description', f('{self.resource_name}.str'))
+        'c4d_symbols': j('res', 'c4d_symbols.h'),
+        'header': j('res', 'description', f('{self.resource_name}.h')),
+        'description': j('res', 'description', f('{self.resource_name}.res')),
+        'strings_us': j('res', 'strings_us', 'description', f('{self.resource_name}.str'))
       })
     if self.write_plugin_stub and plugin_type_info.get('plugintype'):
-      result['plugin'] = j(parent_dir, f('{plugin_filename}.pyp'))
+      result['plugin'] = j(f('{plugin_filename}.pyp'))
     if self.icon_file:
       suffix = os.path.splitext(self.icon_file)[1]
-      result['icon'] = j(parent_dir, 'res', 'icons', f('{self.plugin_name}{suffix}'))
+      result['icon'] = j('res', 'icons', f('{self.plugin_name}{suffix}'))
     return result
+
+  def optional_file_ids(self):
+    return ('c4d_symbols', 'plugin')
 
   def create(self, overwrite=False):
     if not self.directory:
@@ -788,10 +791,11 @@ class UserDataConverter(object):
 
     plugin_type_info = self.plugin_type_info()
     files = self.files()
+    optionals = self.optional_file_ids()
     if not overwrite:
-      for k in ('header', 'description', 'icon', 'strings_us'):
+      for k in files:
         v = files.get(k)
-        if not v: continue
+        if not v or k in optionals: continue
         if os.path.exists(v):
           raise IOError('File "{}" already exists'.format(v))
 
@@ -849,7 +853,7 @@ class UserDataConverter(object):
       ud_tree.visit(lambda x: self.render_symbol_string(fp, x, symbol_map))
       fp.write('}\n')
 
-    if 'plugin' in files:
+    if 'plugin' in files and not os.path.isfile(files['plugin']):
       makedirs(os.path.dirname(files['plugin']))
       with open(res_file('templates/plugin_stub.txt')) as fp:
         template = fp.read()
@@ -1098,7 +1102,8 @@ class UserDataToDescriptionResourceConverterDialog(BaseDialog):
   MODE_RESOURCE = 1
   MODE_PLUGINSTUB = 2
 
-  COLOR_RED = c4d.Vector(0.8, 0.3, 0.3)
+  COLOR_RED = c4d.Vector(0.9, 0.3, 0.3)
+  COLOR_YELLOW = c4d.Vector(0.9, 0.8, 0.6)
 
   def get_converter(self):
     mode = self.GetInt32(self.ID_MODE)
@@ -1143,10 +1148,10 @@ class UserDataToDescriptionResourceConverterDialog(BaseDialog):
     files = cnv.files()
 
     parent = os.path.dirname(files.pop('directory'))
-    files = sorted(files.values(), key=str.lower)
+    files = sorted(files.items(), key=lambda x: x[1].lower())
 
     self.LayoutFlushGroup(self.ID_FILELIST_GROUP)
-    for entry in file_tree(files, parent=parent, flat=True):
+    for entry in file_tree(files, parent=parent, flat=True, key=lambda x: x[1]):
       depth = entry.depth()
       name = '  ' * depth + os.path.basename(entry['path'])
       if entry['isdir']:
@@ -1156,7 +1161,11 @@ class UserDataToDescriptionResourceConverterDialog(BaseDialog):
       self.AddStaticText(widget_id, c4d.BFH_LEFT, name=name)
       full_path = os.path.join(parent, entry['path'])
       if not entry['isdir'] and os.path.isfile(full_path):
-        self.SetColor(widget_id, c4d.COLOR_TEXT, self.COLOR_RED)
+        if entry['data'][0] in cnv.optional_file_ids():
+          color = self.COLOR_YELLOW
+        else:
+          color = self.COLOR_RED
+        self.SetColor(widget_id, c4d.COLOR_TEXT, color)
     self.LayoutChanged(self.ID_FILELIST_GROUP)
 
     self.SetString(self.ID_SYMBOL_PREFIX, cnv.symbol_prefix, False, c4d.EDITTEXT_HELPTEXT)
@@ -1225,7 +1234,7 @@ class UserDataToDescriptionResourceConverterDialog(BaseDialog):
     self.AddChild(self.ID_INDENT, self.INDENT_2SPACE, '2 Spaces')
     self.AddChild(self.ID_INDENT, self.INDENT_4SPACE, '4 Spaces')
     self.AddCheckbox(self.ID_OVERWRITE, c4d.BFH_LEFT, 0, 0, name='Overwrite')
-    self.GroupEnd() # # } MAIN/LEFT/PARAMS/EXPORTSETTINGS
+    self.GroupEnd() # } MAIN/LEFT/PARAMS/EXPORTSETTINGS
 
     self.GroupBegin(0, c4d.BFH_SCALEFIT | c4d.BFV_FIT, 2, 0, title='Plugin')  # MAIN/LEFT/PARAMS/PLUGIN {
     self.GroupBorder(c4d.BORDER_THIN_IN)
@@ -1244,7 +1253,7 @@ class UserDataToDescriptionResourceConverterDialog(BaseDialog):
     self.AddFileSelector(self.ID_ICON_FILE, c4d.BFH_SCALEFIT, type='load')
     self.AddStaticText(self.ID_DIRECTORY_TEXT, c4d.BFH_LEFT, name='Plugin Directory *')
     self.AddFileSelector(self.ID_DIRECTORY, c4d.BFH_SCALEFIT, type='directory')
-    self.GroupEnd() # # } MAIN/LEFT/PARAMS/EXPORTSETTINGS
+    self.GroupEnd() # } MAIN/LEFT/PARAMS/EXPORTSETTINGS
 
     self.GroupEnd()  # } MAIN/LEFT/PARAMS
     self.GroupEnd()  # } MAIN/LEFT
