@@ -36,9 +36,9 @@ class {{ plugin_class }}(c4d.plugins.{{ plugin_type }}Data):
       {%- endif -%}
 
   def Init(self, node):
-    pass
+    return True
 
-  def Message(self, msgid, data):
+  def Message(self, node, msg_type, data):
     return True
 
 
