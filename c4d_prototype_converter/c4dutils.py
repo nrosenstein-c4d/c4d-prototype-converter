@@ -20,6 +20,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
+import collections
 import c4d
 
 try: from cStringIO import StringIO
@@ -97,22 +98,54 @@ class BaseDialog(c4d.gui.GeDialog):
   """
 
   helptext_color = c4d.Vector(0.4)
+  IdRange = collections.namedtuple('IdRange', 'start stop')
 
   def __init__(self):
     super(BaseDialog, self).__init__()
     self.__widgets = {}
     self.__reverse_cache = {}
     self.__idcounter = 9000000
+    self.__free_ids = []
+    self.__idpools = {}
     self.__edit_texts = set()
 
-  def AllocId(self):
+  def AllocId(self, pool='default'):
     """
     Allocates a new ID. Used for widgets that require more than one real widget.
     """
 
-    result = self.__idcounter
-    self.__idcounter += 1
+    if self.__free_ids:
+      idrange = self.__free_ids.pop()
+      result = idrange.start
+      if idrange.start < idrange.stop:
+        self.__free_ids.append(self.IdRange(idrange.start+1, idrange.stop))
+    else:
+      result = self.__idcounter
+      self.__idcounter += 1
+    allocated_ranges = self.__idpools.get(pool)
+    if allocated_ranges is None:
+      allocated_ranges = []
+      self.__idpools[pool] = allocated_ranges
+    for index, idrange in enumerate(allocated_ranges):
+      if result == idrange.start-1:
+        idrange = self.IdRange(result, idrange.stop)
+        allocated_ranges[index] = idrange
+        break
+      elif result == idrange.stop+1:
+        idrange = self.IdRange(idrange.start, result)
+        allocated_ranges[index] = idrange
+        break
+    else:
+      allocated_ranges.append(self.IdRange(result, result))
     return result
+
+  def ReleaseIdPool(self, pool):
+    """
+    Releases all IDs in the specified *pool*, allowing them to be
+    re-allocated with #AllocId().
+    """
+
+    self.__free_ids += self.__idpools.pop(pool, [])
 
   def ReverseMapId(self, param_id):
     """

@@ -730,14 +730,14 @@ class UserDataToDescriptionResourceConverterDialog(BaseDialog):
     parent = os.path.dirname(files.pop('directory'))
     files = sorted(files.items(), key=lambda x: x[1].lower())
 
+    self.ReleaseIdPool('filelist')
     self.LayoutFlushGroup(self.ID_FILELIST_GROUP)
     for entry in file_tree(files, parent=parent, flat=True, key=lambda x: x[1]):
       depth = entry.depth()
       name = '  ' * depth + os.path.basename(entry['path'])
       if entry['isdir']:
         name += '/'
-      # TODO: We should somehow free or re-use these IDs on the next update.
-      widget_id = self.AllocId()
+      widget_id = self.AllocId('filelist')
       self.AddStaticText(widget_id, c4d.BFH_LEFT, name=name)
       full_path = os.path.join(parent, entry['path'])
       if not entry['isdir'] and os.path.isfile(full_path):
