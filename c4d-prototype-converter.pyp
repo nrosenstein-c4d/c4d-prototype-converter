@@ -50,6 +50,11 @@ class NullableRef(object):
       return self._ref()
     return None
 
+  def __bool__(self):
+    return self._ref is not None
+
+  __nonzero__ = __bool__
+
   def set(self, obj):
     self._ref = weakref.ref(obj) if obj is not None else None
 
@@ -249,11 +254,13 @@ class Node(object):
       parent.children.remove(self)
     self.parent.set(None)
 
-  def visit(self, func, with_root=True):
-    if with_root:
+  def visit(self, func, with_root=True, post_order=False):
+    if with_root and not post_order:
       func(self)
     for child in self.children:
       child.visit(func)
+    if with_root and post_order:
+      func(self)
 
   @property
   def depth(self):
@@ -333,17 +340,13 @@ def file_tree(files, parent=None, flat=False):
     if flat:
       order.append(entry)
 
+  roots = (x for x in entries.values() if not x.parent)
   if flat:
     result = []
-    for entry in order:
-      index = len(result)
-      while entry:
-        if entry in result: break
-        result.insert(index, entry)
-        entry = entry.parent()
+    [x.visit(lambda y: result.append(y)) for x in roots]
     return result
   else:
-    return [x for x in entries.values() if not x.parent]
+    return list(roots)
 
 
 # ============================================================================
