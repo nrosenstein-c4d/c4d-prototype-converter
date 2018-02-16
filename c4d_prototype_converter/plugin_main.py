@@ -689,7 +689,7 @@ class UserDataToDescriptionResourceConverterDialog(BaseDialog):
     return UserDataConverter(
       link = self.GetLink(self.ID_LINK),
       plugin_name = self.GetString(self.ID_PLUGIN_NAME),
-      plugin_id = self.GetString(self.ID_PLUGIN_ID),
+      plugin_id = self.GetString(self.ID_PLUGIN_ID).strip(),
       resource_name = self.GetString(self.ID_RESOURCE_NAME),
       symbol_prefix = self.GetString(self.ID_SYMBOL_PREFIX),
       icon_file = self.GetFileSelectorString(self.ID_ICON_FILE),
@@ -764,7 +764,7 @@ class UserDataToDescriptionResourceConverterDialog(BaseDialog):
       invalids.append(self.ID_LINK_TEXT)
       enabled = False
 
-    if not self.GetString(self.ID_PLUGIN_ID).isdigit():
+    if not self.GetString(self.ID_PLUGIN_ID).strip().isdigit():
       invalids.append(self.ID_PLUGIN_ID_TEXT)
       enabled = False
 
