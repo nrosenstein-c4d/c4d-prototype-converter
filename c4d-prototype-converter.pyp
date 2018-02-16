@@ -720,7 +720,8 @@ class UserDataConverter(object):
   """
 
   def __init__(self, link, plugin_name, plugin_id, resource_name,
-               symbol_prefix, icon_file, directory, indent='  '):
+               symbol_prefix, icon_file, directory, indent='  ',
+               write_plugin_stub=True, write_resources=True):
     self.link = link
     self.plugin_name = plugin_name
     self.plugin_id = plugin_id
@@ -729,6 +730,8 @@ class UserDataConverter(object):
     self.icon_file = icon_file
     self.directory = directory
     self.indent = indent
+    self.write_plugin_stub = write_plugin_stub
+    self.write_resources = write_resources
 
   def plugin_type_info(self):
     if not self.link:
@@ -760,14 +763,15 @@ class UserDataConverter(object):
     parent_dir = self.directory or self.plugin_name
     plugin_filename = re.sub('[^\w\d]+', '-', self.plugin_name).lower()
     plugin_type_info = self.plugin_type_info()
-    result = {
-      'directory': parent_dir,
-      'c4d_symbols': j(parent_dir, 'res', 'c4d_symbols.h'),
-      'header': j(parent_dir, 'res', 'description', f('{self.resource_name}.h')),
-      'description': j(parent_dir, 'res', 'description', f('{self.resource_name}.res')),
-      'strings_us': j(parent_dir, 'res', 'strings_us', 'description', f('{self.resource_name}.str'))
-    }
-    if plugin_type_info.get('plugintype'):
+    result = {'directory': parent_dir}
+    if self.write_resources:
+      result.update({
+        'c4d_symbols': j(parent_dir, 'res', 'c4d_symbols.h'),
+        'header': j(parent_dir, 'res', 'description', f('{self.resource_name}.h')),
+        'description': j(parent_dir, 'res', 'description', f('{self.resource_name}.res')),
+        'strings_us': j(parent_dir, 'res', 'strings_us', 'description', f('{self.resource_name}.str'))
+      })
+    if self.write_plugin_stub and plugin_type_info.get('plugintype'):
       result['plugin'] = j(parent_dir, f('{plugin_filename}.pyp'))
     if self.icon_file:
       suffix = os.path.splitext(self.icon_file)[1]
@@ -1097,6 +1101,7 @@ class UserDataToDescriptionResourceConverterDialog(BaseDialog):
   COLOR_RED = c4d.Vector(0.8, 0.3, 0.3)
 
   def get_converter(self):
+    mode = self.GetInt32(self.ID_MODE)
     return UserDataConverter(
       link = self.GetLink(self.ID_LINK),
       plugin_name = self.GetString(self.ID_PLUGIN_NAME),
@@ -1105,10 +1110,12 @@ class UserDataToDescriptionResourceConverterDialog(BaseDialog):
       symbol_prefix = self.GetString(self.ID_SYMBOL_PREFIX),
       icon_file = self.GetFileSelectorString(self.ID_ICON_FILE),
       directory = self.GetFileSelectorString(self.ID_DIRECTORY),
+      write_plugin_stub = mode in (self.MODE_ALL, self.MODE_PLUGINSTUB),
+      write_resources = mode in (self.MODE_ALL, self.MODE_RESOURCE),
       indent = {self.INDENT_TAB: '\t', self.INDENT_2SPACE: '  ', self.INDENT_4SPACE: '    '}[self.GetInt32(self.ID_INDENT)]
     )
 
-  def load_settings(self):
+  def load_settings(self, update_ui=True):
     cnv = self.get_converter()
     if not cnv.link: return
     if not cnv.has_settings(): return
@@ -1126,8 +1133,9 @@ class UserDataToDescriptionResourceConverterDialog(BaseDialog):
     elif cnv.indent == '    ':
       self.SetInt32(self.ID_INDENT, self.INDENT_4SPACE)
     print('Loaded settings from object "{}".'.format(cnv.link.GetName()))
-    self.update_filelist()
-    self.update_enabling()
+    if update_ui:
+      self.update_filelist()
+      self.update_enabling()
 
   def update_filelist(self):
     cnv = self.get_converter()
@@ -1241,7 +1249,7 @@ class UserDataToDescriptionResourceConverterDialog(BaseDialog):
     self.GroupEnd()  # } MAIN/LEFT/PARAMS
     self.GroupEnd()  # } MAIN/LEFT
 
-    self.GroupBegin(self.ID_FILELIST_GROUP, c4d.BFH_RIGHT | c4d.BFV_FIT, 1, 0, title='Filelist') # MAIN/RIGHT {
+    self.GroupBegin(self.ID_FILELIST_GROUP, c4d.BFH_RIGHT | c4d.BFV_FIT, 1, 0, title='Filelist', initw=120) # MAIN/RIGHT {
     self.GroupBorder(c4d.BORDER_THIN_IN)
     self.GroupBorderSpace(6, 6, 6, 6)
     self.GroupEnd()  # } MAIN/RIGHT
@@ -1255,11 +1263,11 @@ class UserDataToDescriptionResourceConverterDialog(BaseDialog):
 
     # Initialize values.
     self.SetLink(self.ID_LINK, c4d.documents.GetActiveDocument().GetActiveObject())
-    self.load_settings()
+    self.load_settings(update_ui=False)
 
-    # Automatically called at the end of #load_settings().
-    #self.update_filelist()
-    #self.update_enabling()
+    # Update UI.
+    self.update_filelist()
+    self.update_enabling()
 
     return True
 
@@ -1275,7 +1283,7 @@ class UserDataToDescriptionResourceConverterDialog(BaseDialog):
     if virtual_id in (
       # Check if anything changed that would have an influence on the filelist.
         self.ID_PLUGIN_NAME, self.ID_RESOURCE_NAME, self.ID_DIRECTORY,
-        self.ID_ICON_FILE, self.ID_LINK):
+        self.ID_ICON_FILE, self.ID_LINK, self.ID_MODE):
       self.update_filelist()
 
     if virtual_id in (self.ID_LINK, self.ID_DIRECTORY, self.ID_PLUGIN_ID):
