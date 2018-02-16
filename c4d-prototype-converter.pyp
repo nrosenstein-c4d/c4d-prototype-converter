@@ -918,7 +918,7 @@ class UserDataConverter(object):
       elif dtype == c4d.CUSTOMDATATYPE_GRADIENT:
         typename = 'GRADIENT'
 
-      elif dtype == c4d.CUSTOMDATATYPE_INEXCLUDE:
+      elif dtype == c4d.CUSTOMDATATYPE_INEXCLUDE_LIST:
         typename = 'IN_EXCLUDE'
 
       elif dtype == c4d.DTYPE_BASELISTLINK:
@@ -928,13 +928,16 @@ class UserDataConverter(object):
           props.append('REFUSE { ' + ' '.join(
             (refuse_name if refuse_name else str(refuse_id)) + ';'
             for refuse_id, refuse_name in refuse
-          ) + '}')
+          ) + ' }')
         accept = bc[c4d.DESC_ACCEPT]
         if accept:
           props.append('ACCEPT { ' + ' '.join(
-            (refuse_name if refuse_name else str(refuse_id)) + ';'
-            for refuse_id, refuse_name in refuse
-          ) + '}')
+            (accept_id if accept_name else str(accept_id)) + ';'
+            for accept_id, accept_name in accept
+            if accept_id != c4d.Tbaselist2d
+          ) + ' }')
+          if props[-1] == 'ACCEPT {  }':
+            props.pop()
 
       elif dtype == c4d.CUSTOMDATATYPE_SPLINE:
         typename = 'SPLINE'
