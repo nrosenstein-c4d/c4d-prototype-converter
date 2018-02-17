@@ -3,7 +3,7 @@
 import c4d
 import os
 
-
+{%- if plugin_icon -%}
 def load_bitmap(path):
   path = os.path.join(os.path.dirname(__file__), path)
   bmp = c4d.bitmaps.BaseBitmap()
@@ -11,6 +11,7 @@ def load_bitmap(path):
     bmp = None
   return bmp
 
+{%- endif -%}
 
 class {{ plugin_class }}(c4d.plugins.{{ plugin_type }}Data):
 
