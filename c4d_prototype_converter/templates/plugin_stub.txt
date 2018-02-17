@@ -43,6 +43,8 @@ class {{ plugin_class }}(c4d.plugins.{{ plugin_type }}Data):
     self.InitAttr(node, float, [c4d.{{ symbol }}])
     {%- elif did[-1].dtype in (c4d.DTYPE_COLOR, c4d.DTYPE_VECTOR) -%}
     self.InitAttr(node, c4d.Vector, [c4d.{{ symbol }}])
+    {%- elif did[-1].dtype == c4d.DTYPE_BASELISTLINK -%}
+    self.InitAttr(node, c4d.BaseList2D, [c4d.{{ symbol }}])
     {%- elif did[-1].dtype == c4d.CUSTOMDATATYPE_INEXCLUDE_LIST -%}
     self.InitAttr(node, c4d.InExcludeData, [c4d.{{ symbol }}])
     {%- elif did[-1].dtype == c4d.CUSTOMDATATYPE_GRADIENT -%}
