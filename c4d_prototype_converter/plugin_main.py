@@ -25,6 +25,7 @@ import c4d
 import collections
 import os
 import re
+import shutil
 import sys
 import webbrowser
 
