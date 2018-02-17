@@ -659,10 +659,14 @@ class UserDataConverter(object):
     name = unicode_refreplace(node['bc'][c4d.DESC_NAME])
     fp.write(self.indent + '{} "{}";\n'.format(symbol, name))
     cycle = node['bc'][c4d.DESC_CYCLE]
-    for __, name in (cycle or []):
+    icons = node['bc'][c4d.DESC_CYCLEICONS]
+    for item_id, name in (cycle or []):
       name = unicode_refreplace(name)
+      strname = name
+      if icons and icons[item_id]:
+        strname += '&i' + str(icons[item_id])
       fp.write(self.indent * 2 + '{} "{}";\n'.format(
-        symbol_map.get_cycle_symbol(node, name), name))
+        symbol_map.get_cycle_symbol(node, name), strname))
 
   def save_to_link(self):
     if not self.link:
