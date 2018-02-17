@@ -36,6 +36,31 @@ class {{ plugin_class }}(c4d.plugins.{{ plugin_type }}Data):
       {%- endif -%}
 
   def Init(self, node):
+    {%- for symbol, did, bc in parameters -%}
+    {%- if did[-1].dtype == c4d.DTYPE_LONG -%}
+    self.InitAttr(node, int, [c4d.{{ symbol }}])
+    {%- elif did[-1].dtype == c4d.DTYPE_REAL -%}
+    self.InitAttr(node, float, [c4d.{{ symbol }}])
+    {%- elif did[-1].dtype in (c4d.DTYPE_COLOR, c4d.DTYPE_VECTOR) -%}
+    self.InitAttr(node, c4d.Vector, [c4d.{{ symbol }}])
+    {%- elif did[-1].dtype == c4d.CUSTOMDATATYPE_INEXCLUDE_LIST -%}
+    self.InitAttr(node, c4d.InExcludeData, [c4d.{{ symbol }}])
+    {%- elif did[-1].dtype == c4d.CUSTOMDATATYPE_GRADIENT -%}
+    self.InitAttr(node, c4d.Gradient, [c4d.{{ symbol }}])
+    {%- elif did[-1].dtype == c4d.CUSTOMDATATYPE_SPLINE -%}
+    self.InitAttr(node, c4d.SplineData, [c4d.{{ symbol }}])
+    {%- endif -%}
+    {%- endfor -%}
+
+    {%- for symbol, did, bc in parameters -%}
+    {%- if did[-1].dtype == c4d.DTYPE_LONG and bc.GetType(c4d.DESC_DEFAULT) == c4d.DTYPE_LONG -%}
+    node[c4d.{{ symbol }}] = {{ bc[c4d.DESC_DEFAULT] }}
+    {%- elif did[-1].dtype == c4d.DTYPE_REAL and bc.GetType(c4d.DESC_DEFAULT) == c4d.DTYPE_REAL -%}
+    node[c4d.{{ symbol }}] = {{ bc[c4d.DESC_DEFAULT] }}
+    {%- elif did[-1].dtype == c4d.DTYPE_VECTOR and bc.GetType(c4d.DESC_DEFAULT) == c4d.DTYPE_VECTOR -%}
+    node[c4d.{{ symbol }}] = c4d.{{ bc[c4d.DESC_DEFAULT] }}
+    {%- endif -%}
+    {%- endfor -%}
     return True
 
   def Message(self, node, msg_type, data):

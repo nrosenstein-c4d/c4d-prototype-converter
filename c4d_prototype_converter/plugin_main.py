@@ -418,6 +418,8 @@ class UserDataConverter(object):
       with open(res_file('templates/plugin_stub.txt')) as fp:
         template = fp.read()
       context = {
+        'c4d': c4d,
+        'parameters': [(symbol_map.descid_to_symbol[did], did, bc) for did, bc in ud],
         'plugin_class': re.sub('[^\w\d]+', '', self.plugin_name) + 'Data',
         'plugin_type': plugin_type_info['plugintype'],
         'plugin_id': self.plugin_id,
