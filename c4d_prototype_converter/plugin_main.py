@@ -202,6 +202,34 @@ def userdata_tree(ud):
   return root
 
 
+def is_minvalue(x):
+  """
+  Checks for very low values, that might indicate that a parameter has
+  no upper bounds (from a user perspective).
+  """
+
+  if isinstance(x, int):
+    return x <= 2**31
+  elif isinstance(x, float):
+    return x < float('1e' + str(sys.float_info.min_10_exp-1))
+  elif isinstance(x, c4d.Vector):
+    return is_minvalue(x.x) and is_minvalue(x.y) and is_minvalue(x.z)
+
+
+def is_maxvalue(x):
+  """
+  Checks for very high values, that might indicate that a parameter has
+  no upper bounds (from a user perspective) .
+  """
+
+  if isinstance(x, int):
+    return x >= 2**32-1
+  elif isinstance(x, float):
+    return x > float('1e+' + str(sys.float_info.max_10_exp-1))
+  elif isinstance(x, c4d.Vector):
+    return is_maxvalue(x.x) and is_maxvalue(x.y) and is_maxvalue(x.z)
+
+
 ID_PLUGIN_CONVERTER = 1040648
 
 
@@ -516,9 +544,9 @@ class UserDataConverter(object):
         # TODO: LATLON customgui
 
         if not has_cycle:
-          if bc.GetType(c4d.DESC_MIN) == dtype:
+          if bc.GetType(c4d.DESC_MIN) == dtype and not is_minvalue(bc[c4d.DESC_MIN]):
             props.append('MIN {};'.format(bc[c4d.DESC_MIN] * multiplier))
-          if bc.GetType(c4d.DESC_MAX) == dtype:
+          if bc.GetType(c4d.DESC_MAX) == dtype and not is_maxvalue(bc[c4d.DESC_MAX]):
             props.append('MAX {};'.format(bc[c4d.DESC_MAX] * multiplier))
 
           if bc[c4d.DESC_CUSTOMGUI] in (c4d.CUSTOMGUI_LONGSLIDER, c4d.CUSTOMGUI_REALSLIDER, c4d.CUSTOMGUI_REALSLIDERONLY):
@@ -541,9 +569,9 @@ class UserDataConverter(object):
         if isinstance(default, c4d.Vector):
           props.append(vecprop('DEFAULT', default))
         if dtype == c4d.DTYPE_VECTOR:
-          if bc.GetType(c4d.DESC_MIN) == c4d.DTYPE_VECTOR:
+          if bc.GetType(c4d.DESC_MIN) == c4d.DTYPE_VECTOR and not is_minvalue(bc[c4d.DESC_MIN]):
             props.append(vecprop('MIN', bc.GetVector(c4d.DESC_MIN) * multiplier))
-          if bc.GetType(c4d.DESC_MAX) == c4d.DTYPE_VECTOR:
+          if bc.GetType(c4d.DESC_MAX) == c4d.DTYPE_VECTOR and not is_maxvalue(bc[c4d.DESC_MAX]):
             props.append(vecprop('MAX', bc.GetVector(c4d.DESC_MAX) * multiplier))
           if bc[c4d.DESC_CUSTOMGUI] == c4d.CUSTOMGUI_SUBDESCRIPTION:
             props.append('CUSTOMGUI SUBDESCRIPTION;')
