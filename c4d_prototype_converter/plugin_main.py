@@ -484,9 +484,10 @@ class UserDataConverter(object):
         typename = 'LONG' if dtype == c4d.DTYPE_LONG else 'REAL'
         typecast = int if dtype == c4d.DTYPE_LONG else float
         cycle = bc[c4d.DESC_CYCLE]
-        has_cycle = False
-        if dtype == c4d.DTYPE_LONG and cycle:
-          has_cycle = True
+        has_cycle = (dtype == c4d.DTYPE_LONG and cycle)
+        multiplier = 100 if (not has_cycle and bc[c4d.DESC_UNIT] == c4d.DESC_UNIT_PERCENT) else 1
+
+        if has_cycle:
           cycle_lines = []
           default_name = None
           if isinstance(default, int):
@@ -498,9 +499,9 @@ class UserDataConverter(object):
           if default_name:
             props.append('DEFAULT {};'.format(symbol_map.get_cycle_symbol(node, default_name)))
           elif isinstance(default, int):
-            props.append('DEFAULT {};'.format(int(default)))
+            props.append('DEFAULT {};'.format(int(default * multiplier)))
         elif isinstance(default, (int, float)):
-          props.append('DEFAULT {};'.format(typecast(default)))
+          props.append('DEFAULT {};'.format(typecast(default * multiplier)))
 
         if bc[c4d.DESC_CUSTOMGUI] == c4d.CUSTOMGUI_LONGSLIDER:
           props.append('CUSTOMGUI LONGSLIDER;')
@@ -510,18 +511,23 @@ class UserDataConverter(object):
           props.append('CUSTOMGUI REALSLIDER;')
         elif bc[c4d.DESC_CUSTOMGUI] == c4d.CUSTOMGUI_REALSLIDERONLY:
           props.append('CUSTOMGUI REALSLIDERONLY;')
+        # TODO: LATLON customgui
 
         if not has_cycle:
           if bc.GetType(c4d.DESC_MIN) == dtype:
-            props.append('MIN {};'.format(bc[c4d.DESC_MIN]))
+            props.append('MIN {};'.format(bc[c4d.DESC_MIN] * multiplier))
           if bc.GetType(c4d.DESC_MAX) == dtype:
-            props.append('MAX {};'.format(bc[c4d.DESC_MAX]))
+            props.append('MAX {};'.format(bc[c4d.DESC_MAX] * multiplier))
 
           if bc[c4d.DESC_CUSTOMGUI] in (c4d.CUSTOMGUI_LONGSLIDER, c4d.CUSTOMGUI_REALSLIDER, c4d.CUSTOMGUI_REALSLIDERONLY):
             if bc.GetType(c4d.DESC_MINSLIDER) == dtype:
-              props.append('MINSLIDER {};'.format(bc[c4d.DESC_MINSLIDER]))
+              props.append('MINSLIDER {};'.format(bc[c4d.DESC_MINSLIDER] * multiplier))
             if bc.GetType(c4d.DESC_MAXSLIDER) == dtype:
-              props.append('MAXSLIDER {};'.format(bc[c4d.DESC_MAXSLIDER]))
+              props.append('MAXSLIDER {};'.format(bc[c4d.DESC_MAXSLIDER] * multiplier))
+
+          if bc.GetType(c4d.DESC_STEP) == dtype:
+            step = bc[c4d.DESC_STEP] * multiplier
+            props.append('STEP {};'.format(step))
 
       elif dtype == c4d.DTYPE_BUTTON:
         typename = 'BUTTON'
@@ -529,14 +535,18 @@ class UserDataConverter(object):
       elif dtype in (c4d.DTYPE_COLOR, c4d.DTYPE_VECTOR):
         typename = 'COLOR' if dtype == c4d.DTYPE_COLOR else 'VECTOR'
         vecprop = lambda n, x: '{0} {1.x} {1.y} {1.z};'.format(n, x)
+        multiplier = 100 if (bc[c4d.DESC_UNIT] == c4d.DESC_UNIT_PERCENT) else 1
         if isinstance(default, c4d.Vector):
           props.append(vecprop('DEFAULT', default))
-        if bc.GetType(c4d.DESC_MIN) in (c4d.DTYPE_COLOR, c4d.DTYPE_VECTOR):
-          props.append(vecprop('MIN', bc.GetVector(c4d.DESC_MIN)))
-        if bc.GetType(c4d.DESC_MAX) in (c4d.DTYPE_COLOR, c4d.DTYPE_VECTOR):
-          props.append(vecprop('MAX', bc.GetVector(c4d.DESC_MAX)))
-        if bc[c4d.DESC_CUSTOMGUI] == c4d.CUSTOMGUI_SUBDESCRIPTION:
-          props.append('CUSTOMGUI SUBDESCRIPTION;')
+        if dtype == c4d.DTYPE_VECTOR:
+          if bc.GetType(c4d.DESC_MIN) == c4d.DTYPE_VECTOR:
+            props.append(vecprop('MIN', bc.GetVector(c4d.DESC_MIN) * multiplier))
+          if bc.GetType(c4d.DESC_MAX) == c4d.DTYPE_VECTOR:
+            props.append(vecprop('MAX', bc.GetVector(c4d.DESC_MAX) * multiplier))
+          if bc[c4d.DESC_CUSTOMGUI] == c4d.CUSTOMGUI_SUBDESCRIPTION:
+            props.append('CUSTOMGUI SUBDESCRIPTION;')
+          if bc.GetType(c4d.DESC_STEP) == c4d.DTYPE_VECTOR:
+            props.append(vecprop('STEP', bc[c4d.DESC_STEP] * multiplier))
 
       elif dtype == c4d.DTYPE_FILENAME:
         typename = 'FILENAME'
@@ -585,6 +595,15 @@ class UserDataConverter(object):
       else:
         print('Unhandled datatype:', dtype, '({})'.format(node['bc'][c4d.DESC_NAME]))
         return
+
+      # Handle units.
+      if dtype in (c4d.DTYPE_LONG, c4d.DTYPE_REAL, c4d.DTYPE_VECTOR):
+        if bc[c4d.DESC_UNIT] == c4d.DESC_UNIT_PERCENT:
+          props.append('UNIT PERCENT;')
+        elif bc[c4d.DESC_UNIT] == c4d.DESC_UNIT_DEGREE:
+          props.append('UNIT DEGREE;')
+        elif bc[c4d.DESC_UNIT] == c4d.DESC_UNIT_METER:
+          props.append('UNIT METER;')
 
       if any('\n' in x for x in props):
         fp.write(self.indent * depth + '{} {} {{\n'.format(typename, symbol))

@@ -9,7 +9,6 @@ to a plugin.
 
 __To do__
 
-* [ ] Support unit and step in REAL parameters
 * [ ] Support Longitude/Latitude customgui for REAL parameters
 * [ ] Support QuickTab & Radio customgui for LONG parameters
 * [ ] Support for GROUP titlebar option
