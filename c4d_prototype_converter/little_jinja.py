@@ -107,10 +107,14 @@ class RegexScanner(object):
 def little_jinja(template_string, context):
   """
   A very lightweight implementation of the Jinja template rendering engine.
-  It supports `{{ expr }}` variables as well as `{% if %}` control-flow (with
-  elif, else and endif). The control-flow tags may be used as `{%-` and/or
-  `-%}` to strip the preceeding/following whitespace until the next line,
-  respectively.
+  The following syntax is supported:
+
+  * `{{ expr }}`
+  * `{% if <cond> %}{% elif <cond> %}{% else %}{% endif %}`
+  * `{% for <vars> in <expr> %}{% endif %}`
+
+  The control-flow tags may be used as `{%-` and/or `-%}` to strip the
+  content of the line before or after the tag, respectively.
   """
 
   scanner = RegexScanner(template_string)
@@ -119,6 +123,8 @@ def little_jinja(template_string, context):
   scanner.rule('elif', r'\{%-?\s*elif\b(.*?)-?%\}')
   scanner.rule('else', r'\{%-?\s*else\s*-?%\}')
   scanner.rule('endif', r'\{%-?\s*endif\s*-?%\}')
+  scanner.rule('for', r'\{%-?\s*for\s+(.*?)\s+in\s+(.*?)\s*-?%\}')
+  scanner.rule('endfor', r'\{%-?\s*endfor\s*-?%\}')
 
   class Node(object):
     def __init__(self, type, data, sub):
@@ -132,11 +138,11 @@ def little_jinja(template_string, context):
   for kind, match in scanner:
     prev_text = Node('text', scanner.behind(), None)
     open_blocks[-1].sub.append(prev_text)
+    strip_left = match.group(0).startswith('{%-')
+    strip_right = match.group(0).endswith('-%}')
     if kind == 'var':
       open_blocks[-1].sub.append(Node('var', match.group(1), None))
     elif kind in ('if', 'elif', 'else', 'endif'):
-      strip_left = match.group(0).startswith('{%-')
-      strip_right = match.group(0).endswith('-%}')
       if kind == 'if':
         if_node = Node('if', {'elif': [], 'else': None, 'cond': match.group(1)}, [])
         open_blocks[-1].sub.append(if_node)
@@ -166,14 +172,24 @@ def little_jinja(template_string, context):
         open_blocks.pop()
       else:
         assert False, kind
-      if strip_left:
-        newline = prev_text.data.rfind('\n')
-        if newline >= 0:
-          prev_text.data = prev_text.data[:newline]
-      if strip_right:
-        scanner.skipline()
+    elif kind in ('for', 'endfor'):
+      if kind == 'for':
+        varnames, expr = match.group(1), match.group(2)
+        for_node = Node('for', {'varnames': varnames.split(','), 'expr': expr}, [])
+        open_blocks[-1].sub.append(for_node)
+        open_blocks.append(for_node)
+      elif kind == 'endfor':
+        if open_blocks[-1].type != 'for':
+          raise ValueError('unmatched "endfor" instruction')
+        open_blocks.pop()
     else:
       assert False, kind
+    if strip_left:
+      newline = prev_text.data.rfind('\n')
+      if newline >= 0:
+        prev_text.data = prev_text.data[:newline]
+    if strip_right:
+      scanner.skipline()
 
   open_blocks[-1].sub.append(Node('text', scanner.behind(), None))
 
@@ -182,25 +198,36 @@ def little_jinja(template_string, context):
       .format(open_blocks[-1].type))
 
   out = StringIO()
-  def render(node):
+  def render(node, context):
     if node.type == 'text':
       out.write(node.data)
     elif node.type == 'var':
       out.write(str(eval(node.data, context)))
     elif node.type == 'if':
       tests = [node] + node.data['elif']
-      for node in tests:
-        if eval(node.data['cond'], context):
-          for child in node.sub:
-            render(child)
+      for cond_node in tests:
+        if eval(cond_node.data['cond'], context):
+          for child in cond_node.sub:
+            render(child, context)
           break
       else:
         if node.data['else']:
           for child in node.sub:
-            render(child)
+            render(child, context)
+    elif node.type == 'for':
+      sub_context = context.copy()
+      for index, item in enumerate(eval(node.data['expr'], context)):
+        if len(item) != len(node.data['varnames']):
+          raise ValueError('unpacking of "{}" failed at index {}'
+            .format(node.data['expr'], index))
+        sub_context['loop_index'] = index
+        for varname, value in zip(node.data['varnames'], item):
+          sub_context[varname.strip()] = value
+        for child in node.sub:
+          render(child, sub_context)
     else:
       assert False, node.type
   for node in root.sub:
-    render(node)
+    render(node, context)
 
   return out.getvalue()
