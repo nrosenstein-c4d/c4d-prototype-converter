@@ -3,21 +3,32 @@
 import c4d
 import os
 
-# Note: The name `res` is used to access your plugin's resource symbols. It is not
-# recommended to use the `c4d` module due to the high chance that the symbol
-# cache is not in sync with your plugin's description once you made changes to it.
-# If you want, you can still exchange this list of hardcoded symbols with `res = c4d`.
-# Alternatively, C4DDev can generated this kind of code for you.
-#   (https://github.com/NiklasRosenstein/c4ddev)
+
+{%- if symbol_mode == 'c4d' -%}
+#
+# Note: It is NOT recommended to use the Cinema 4D module to access your
+# plugin's resource symbols. The C4DDev project contains tools that can
+# parse resource files and generate Python code with all the symbols.
+#
+#   See https://github.com/NiklasRosenstein/c4ddev
+#
+res = c4d
+
+{%- elif symbol_mode == 'c4ddev' -%}
+#
+# Note: Check out the C4DDev project which contains tools that can parse
+# resource files and generate Python code with all the symbols, similar to
+# what you can see below.
+#
+#   See https://github.com/NiklasRosenstein/c4ddev
 class res(object):
   {%- for node, did, bc in parameters -%}
   {{ node['symbol'][0] }} = {{ node['symbol'][1] }}
   {%- endfor -%}
-
 res = res()
 
+{%- endif -%}
 {%- if plugin_icon -%}
-
 def load_bitmap(path):
   path = os.path.join(os.path.dirname(__file__), path)
   bmp = c4d.bitmaps.BaseBitmap()
