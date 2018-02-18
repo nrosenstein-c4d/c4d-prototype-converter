@@ -11,10 +11,11 @@ to a plugin.
 
 * Converts UserData to Cinema 4D description resource files
 * Generates a Python plugin template file
+* Automatically converts code from Python Generators or Expression Tags
+  to valid code in the plugin template (WIP)
 
 ### Planned Features
 
-* Automatic conversion of Python Generators to ObjectData plugins (and alike)
 * A tool to convert Scripts to CommandData plugins
 
 ### Ideas for the Future
