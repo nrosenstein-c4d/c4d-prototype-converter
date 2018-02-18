@@ -233,6 +233,9 @@ def is_maxvalue(x):
 
 ID_PLUGIN_CONVERTER = 1040648
 ID_SCRIPT_CONVERTER = 1040671
+COLOR_BLUE = c4d.Vector(0.5, 0.6, 0.9)
+COLOR_RED = c4d.Vector(0.9, 0.3, 0.3)
+COLOR_YELLOW = c4d.Vector(0.9, 0.8, 0.6)
 
 
 class SymbolMap(object):
@@ -802,10 +805,6 @@ class UserDataToDescriptionResourceConverterDialog(BaseDialog):
   SYMBOLMODE_C4D = 0
   SYMBOLMODE_C4DDEV = 1
 
-  COLOR_BLUE = c4d.Vector(0.5, 0.6, 0.9)
-  COLOR_RED = c4d.Vector(0.9, 0.3, 0.3)
-  COLOR_YELLOW = c4d.Vector(0.9, 0.8, 0.6)
-
   def get_converter(self):
     mode = self.GetInt32(self.ID_MODE)
     symbol_mode = {self.SYMBOLMODE_C4D: 'c4d', self.SYMBOLMODE_C4DDEV: 'c4ddev'}[self.GetInt32(self.ID_SYMBOLMODE)]
@@ -870,11 +869,11 @@ class UserDataToDescriptionResourceConverterDialog(BaseDialog):
       full_path = os.path.join(parent, entry['path'])
       if not entry['isdir'] and os.path.isfile(full_path):
         if entry['data'][0] in cnv.optional_file_ids():
-          color = self.COLOR_BLUE
+          color = COLOR_BLUE
         elif cnv.overwrite:
-          color = self.COLOR_YELLOW
+          color = COLOR_YELLOW
         else:
-          color = self.COLOR_RED
+          color = COLOR_RED
         self.SetColor(widget_id, c4d.COLOR_TEXT, color)
     self.LayoutChanged(self.ID_FILELIST_GROUP)
 
@@ -896,7 +895,7 @@ class UserDataToDescriptionResourceConverterDialog(BaseDialog):
       enabled = False
 
     for param_id in ids:
-      color = self.COLOR_RED if param_id in invalids else None
+      color = COLOR_RED if param_id in invalids else None
       self.SetColor(param_id, c4d.COLOR_TEXT, color)
 
     self.Enable(self.ID_CREATE, not invalids)
@@ -1035,6 +1034,41 @@ class UserDataToDescriptionResourceConverterDialog(BaseDialog):
     return True
 
 
+class ScriptConverter(object):
+  """
+  Helper datastructure that contains all the information for converting
+  scripts.
+  """
+
+  def __init__(self, plugin_name, plugin_id, script_file, icon_file, directory, overwrite=True):
+    self.plugin_name = plugin_name
+    self.plugin_id = plugin_id
+    self.script_file = script_file
+    self.icon_file = icon_file
+    self.directory = directory
+    self.overwrite = overwrite
+
+  def autofill(self, default_plugin_name='My Plugin'):
+    if not self.plugin_name:
+      if self.script_file:
+        self.plugin_name = os.path.splitext(os.path.basename(self.script_file))[0]
+      else:
+        self.plugin_name = default_plugin_name
+    if not self.directory:
+      write_dir = c4d.storage.GeGetC4DPath(c4d.C4D_PATH_STARTUPWRITE)
+      dirname = re.sub('[^\w\d]+', '-', self.plugin_name).lower()
+      self.directory = os.path.join(write_dir, 'plugins', dirname)
+
+  def files(self):
+    parent_dir = self.directory or self.plugin_name
+    plugin_filename = re.sub('[^\w\d]+', '-', self.plugin_name).lower() + '.pyp'
+    files = {
+      'directory': parent_dir,
+      'plugin': os.path.join(parent_dir, plugin_filename)
+    }
+    return files
+
+
 class ScriptToPluginConverter(BaseDialog):
   """
   This dialog implements the User Interface for converting Cinema 4D Python
@@ -1049,15 +1083,36 @@ class ScriptToPluginConverter(BaseDialog):
   ID_DIRECTORY = 1005
   ID_CREATE = 1006
   ID_CANCEL = 1007
+  ID_PLUGIN_ID_TEXT = 1008
+  ID_SCRIPT_FILE_TEXT = 1009
+
+  def get_converter(self):
+    return ScriptConverter(
+      plugin_name = self.GetString(self.ID_PLUGIN_NAME),
+      plugin_id = self.GetString(self.ID_PLUGIN_ID),
+      script_file = self.GetFileSelectorString(self.ID_SCRIPT_FILE),
+      icon_file = self.GetFileSelectorString(self.ID_ICON_FILE),
+      directory = self.GetFileSelectorString(self.ID_DIRECTORY),
+      overwrite = True
+    )
 
   def update_enabling(self):
+    cnv = self.get_converter()
+
+    self.SetColor(self.ID_PLUGIN_ID_TEXT, c4d.COLOR_TEXT,
+      COLOR_RED if not cnv.plugin_id.strip().isdigit() else None)
+    self.SetColor(self.ID_SCRIPT_FILE_TEXT, c4d.COLOR_TEXT,
+      COLOR_RED if not cnv.script_file else None)
+
+    cnv.autofill()
     enable = True
-    if not self.GetString(self.ID_PLUGIN_NAME) or \
-        not self.GetString(self.ID_PLUGIN_ID) or \
-        not self.GetFileSelectorString(self.ID_DIRECTORY) or \
-        not self.GetFileSelectorString(self.ID_SCRIPT_FILE):
+    if not cnv.plugin_name or not cnv.script_file or \
+        not cnv.plugin_id.strip().isdigit():
       enable = False
     self.Enable(self.ID_CREATE, enable)
+    self.SetString(self.ID_PLUGIN_NAME, cnv.plugin_name, flags=c4d.EDITTEXT_HELPTEXT)
+    self.SetFileSelectorString(self.ID_DIRECTORY, cnv.directory, flags=c4d.EDITTEXT_HELPTEXT)
+
 
   def do_create(self):
     print("Create!")  # TODO
@@ -1069,18 +1124,18 @@ class ScriptToPluginConverter(BaseDialog):
 
     self.GroupBegin(0, c4d.BFH_SCALEFIT, 2, 0)  # MAIN/PARAMS {
     #self.GroupBorderSpace(6, 6, 6, 6)
-    self.AddStaticText(0, c4d.BFH_LEFT, name='Plugin Name *')
+    self.AddStaticText(0, c4d.BFH_LEFT, name='Plugin Name')
     self.AddEditText(self.ID_PLUGIN_NAME, c4d.BFH_SCALEFIT)
-    self.AddStaticText(0, c4d.BFH_LEFT, name='Plugin ID *')
+    self.AddStaticText(self.ID_PLUGIN_ID_TEXT, c4d.BFH_LEFT, name='Plugin ID *')
     self.GroupBegin(0, c4d.BFH_SCALEFIT, 0, 1)
     self.AddEditText(self.ID_PLUGIN_ID, c4d.BFH_LEFT, 100)
     self.AddButton(self.ID_PLUGIN_ID_GET, c4d.BFH_LEFT, name='Get Plugin ID')
     self.GroupEnd()
-    self.AddStaticText(0, c4d.BFH_LEFT, name='Script *')
+    self.AddStaticText(self.ID_SCRIPT_FILE_TEXT, c4d.BFH_LEFT, name='Script *')
     self.AddFileSelector(self.ID_SCRIPT_FILE, c4d.BFH_SCALEFIT, type='load')
     self.AddStaticText(0, c4d.BFH_LEFT, name='Icon')
     self.AddFileSelector(self.ID_ICON_FILE, c4d.BFH_SCALEFIT, type='load')
-    self.AddStaticText(0, c4d.BFH_LEFT, name='Plugin Directory *')
+    self.AddStaticText(0, c4d.BFH_LEFT, name='Plugin Directory')
     self.AddFileSelector(self.ID_DIRECTORY, c4d.BFH_SCALEFIT, type='directory')
     self.GroupEnd()
     self.GroupEnd() # } MAIN/PARAMS
