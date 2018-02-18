@@ -5,7 +5,7 @@
 This plugin aids you in converting your Cinema 4D Python plugin prototype
 to a plugin.
 
-![](https://i.imgur.com/FCyghJm.png)
+![](https://i.imgur.com/LDwIgrj.png)
 
 ### Features
 
