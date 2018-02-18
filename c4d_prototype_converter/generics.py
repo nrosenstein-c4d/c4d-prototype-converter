@@ -150,9 +150,13 @@ class BaseHashDict(object):
   def values(self):
     return self._dict.values()
 
+  def iteritems(self):
+    for key, value in self._dict.iteritems():
+      yield key.key, value
+
   def iterkeys(self):
     for key in self._dict.keys():
-      yield key.value
+      yield key.key
 
   def itervalues(self):
     return self._dict.itervalues()
