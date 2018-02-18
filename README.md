@@ -13,10 +13,7 @@ to a plugin.
 * Generates a Python plugin template file
 * Automatically converts code from Python Generators or Expression Tags
   to valid code in the plugin template (WIP)
-
-### Planned Features
-
-* A tool to convert Scripts to CommandData plugins
+* A tool to convert Scripts to CommandData plugins (WIP)
 
 ### Ideas for the Future
 
