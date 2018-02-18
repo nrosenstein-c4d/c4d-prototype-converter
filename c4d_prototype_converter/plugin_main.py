@@ -242,6 +242,7 @@ class SymbolMap(object):
     self.curr_id = 1000
     self.symbols = collections.OrderedDict()
     self.descid_to_symbol = HashDict()
+    self.descid_to_node = HashDict()
     self.prefix = prefix
 
   def translate_name(self, name, add_prefix=True, unique=True):
@@ -280,6 +281,7 @@ class SymbolMap(object):
     self.symbols[symbol] = value
     descid = node['descid']
     self.descid_to_symbol[descid] = symbol
+    self.descid_to_node[descid] = node
     node['symbol'] = (symbol, value)
     return symbol, value
 
@@ -447,7 +449,7 @@ class UserDataConverter(object):
         template = fp.read()
       context = {
         'c4d': c4d,
-        'parameters': [(symbol_map.descid_to_symbol[did], did, bc) for did, bc in ud],
+        'parameters': [(symbol_map.descid_to_node[did], did, bc) for did, bc in ud],
         'plugin_class': re.sub('[^\w\d]+', '', self.plugin_name) + 'Data',
         'plugin_type': plugin_type_info['plugintype'],
         'plugin_id': self.plugin_id,

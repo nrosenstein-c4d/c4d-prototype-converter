@@ -3,7 +3,21 @@
 import c4d
 import os
 
+# Note: The name `res` is used to access your plugin's resource symbols. It is not
+# recommended to use the `c4d` module due to the high chance that the symbol
+# cache is not in sync with your plugin's description once you made changes to it.
+# If you want, you can still exchange this list of hardcoded symbols with `res = c4d`.
+# Alternatively, C4DDev can generated this kind of code for you.
+#   (https://github.com/NiklasRosenstein/c4ddev)
+class res(object):
+  {%- for node, did, bc in parameters -%}
+  {{ node['symbol'][0] }} = {{ node['symbol'][1] }}
+  {%- endfor -%}
+
+res = res()
+
 {%- if plugin_icon -%}
+
 def load_bitmap(path):
   path = os.path.join(os.path.dirname(__file__), path)
   bmp = c4d.bitmaps.BaseBitmap()
@@ -37,35 +51,35 @@ class {{ plugin_class }}(c4d.plugins.{{ plugin_type }}Data):
       {%- endif -%}
 
   def Init(self, node):
-    {%- for symbol, did, bc in parameters -%}
+    {%- for node, did, bc in parameters -%}
     {%- if did[-1].dtype == c4d.DTYPE_BOOL -%}
-    self.InitAttr(node, bool, [c4d.{{ symbol }}])
+    self.InitAttr(node, bool, [res.{{ node['symbol'][0] }}])
     {%- elif did[-1].dtype == c4d.DTYPE_LONG -%}
-    self.InitAttr(node, int, [c4d.{{ symbol }}])
+    self.InitAttr(node, int, [res.{{ node['symbol'][0] }}])
     {%- elif did[-1].dtype == c4d.DTYPE_REAL -%}
-    self.InitAttr(node, float, [c4d.{{ symbol }}])
+    self.InitAttr(node, float, [res.{{ node['symbol'][0] }}])
     {%- elif did[-1].dtype in (c4d.DTYPE_COLOR, c4d.DTYPE_VECTOR) -%}
-    self.InitAttr(node, c4d.Vector, [c4d.{{ symbol }}])
+    self.InitAttr(node, c4d.Vector, [res.{{ node['symbol'][0] }}])
     {%- elif did[-1].dtype == c4d.DTYPE_BASELISTLINK -%}
-    self.InitAttr(node, c4d.BaseList2D, [c4d.{{ symbol }}])
+    self.InitAttr(node, c4d.BaseList2D, [res.{{ node['symbol'][0] }}])
     {%- elif did[-1].dtype == c4d.CUSTOMDATATYPE_INEXCLUDE_LIST -%}
-    self.InitAttr(node, c4d.InExcludeData, [c4d.{{ symbol }}])
+    self.InitAttr(node, c4d.InExcludeData, [res.{{ node['symbol'][0] }}])
     {%- elif did[-1].dtype == c4d.CUSTOMDATATYPE_GRADIENT -%}
-    self.InitAttr(node, c4d.Gradient, [c4d.{{ symbol }}])
+    self.InitAttr(node, c4d.Gradient, [res.{{ node['symbol'][0] }}])
     {%- elif did[-1].dtype == c4d.CUSTOMDATATYPE_SPLINE -%}
-    self.InitAttr(node, c4d.SplineData, [c4d.{{ symbol }}])
+    self.InitAttr(node, c4d.SplineData, [res.{{ node['symbol'][0] }}])
     {%- endif -%}
     {%- endfor -%}
 
-    {%- for symbol, did, bc in parameters -%}
+    {%- for node, did, bc in parameters -%}
     {%- if did[-1].dtype == c4d.DTYPE_BOOL -%}
-    node[c4d.{{ symbol }}] = {{ bool(bc[c4d.DESC_DEFAULT]) }}
+    node[res.{{ node['symbol'][0] }}] = {{ bool(bc[c4d.DESC_DEFAULT]) }}
     {%- elif did[-1].dtype == c4d.DTYPE_LONG and bc.GetType(c4d.DESC_DEFAULT) == c4d.DTYPE_LONG -%}
-    node[c4d.{{ symbol }}] = {{ bc[c4d.DESC_DEFAULT] }}
+    node[res.{{ node['symbol'][0] }}] = {{ bc[c4d.DESC_DEFAULT] }}
     {%- elif did[-1].dtype == c4d.DTYPE_REAL and bc.GetType(c4d.DESC_DEFAULT) == c4d.DTYPE_REAL -%}
-    node[c4d.{{ symbol }}] = {{ bc[c4d.DESC_DEFAULT] }}
+    node[res.{{ node['symbol'][0] }}] = {{ bc[c4d.DESC_DEFAULT] }}
     {%- elif did[-1].dtype == c4d.DTYPE_VECTOR and bc.GetType(c4d.DESC_DEFAULT) == c4d.DTYPE_VECTOR -%}
-    node[c4d.{{ symbol }}] = c4d.{{ bc[c4d.DESC_DEFAULT] }}
+    node[res.{{ node['symbol'][0] }}] = c4d.{{ bc[c4d.DESC_DEFAULT] }}
     {%- endif -%}
     {%- endfor -%}
     return True
