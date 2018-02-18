@@ -232,6 +232,7 @@ def is_maxvalue(x):
 
 
 ID_PLUGIN_CONVERTER = 1040648
+ID_SCRIPT_CONVERTER = 1040671
 
 
 class SymbolMap(object):
@@ -1034,6 +1035,83 @@ class UserDataToDescriptionResourceConverterDialog(BaseDialog):
     return True
 
 
+class ScriptToPluginConverter(BaseDialog):
+  """
+  This dialog implements the User Interface for converting Cinema 4D Python
+  scripts for the Script Manager to Python plugins.
+  """
+
+  ID_PLUGIN_NAME = 1000
+  ID_SCRIPT_FILE = 1001
+  ID_ICON_FILE = 1002
+  ID_PLUGIN_ID = 1003
+  ID_PLUGIN_ID_GET = 1004
+  ID_DIRECTORY = 1005
+  ID_CREATE = 1006
+  ID_CANCEL = 1007
+
+  def update_enabling(self):
+    enable = True
+    if not self.GetString(self.ID_PLUGIN_NAME) or \
+        not self.GetString(self.ID_PLUGIN_ID) or \
+        not self.GetFileSelectorString(self.ID_DIRECTORY) or \
+        not self.GetFileSelectorString(self.ID_SCRIPT_FILE):
+      enable = False
+    self.Enable(self.ID_CREATE, enable)
+
+  def do_create(self):
+    print("Create!")  # TODO
+
+  def CreateLayout(self):
+    self.SetTitle('Script to Plugin Converter')
+    self.GroupBorderSpace(6, 6, 6, 6)
+    self.GroupBegin(0, c4d.BFH_SCALEFIT, 1, 0)  # MAIN {
+
+    self.GroupBegin(0, c4d.BFH_SCALEFIT, 2, 0)  # MAIN/PARAMS {
+    #self.GroupBorderSpace(6, 6, 6, 6)
+    self.AddStaticText(0, c4d.BFH_LEFT, name='Plugin Name *')
+    self.AddEditText(self.ID_PLUGIN_NAME, c4d.BFH_SCALEFIT)
+    self.AddStaticText(0, c4d.BFH_LEFT, name='Plugin ID *')
+    self.GroupBegin(0, c4d.BFH_SCALEFIT, 0, 1)
+    self.AddEditText(self.ID_PLUGIN_ID, c4d.BFH_LEFT, 100)
+    self.AddButton(self.ID_PLUGIN_ID_GET, c4d.BFH_LEFT, name='Get Plugin ID')
+    self.GroupEnd()
+    self.AddStaticText(0, c4d.BFH_LEFT, name='Script *')
+    self.AddFileSelector(self.ID_SCRIPT_FILE, c4d.BFH_SCALEFIT, type='load')
+    self.AddStaticText(0, c4d.BFH_LEFT, name='Icon')
+    self.AddFileSelector(self.ID_ICON_FILE, c4d.BFH_SCALEFIT, type='load')
+    self.AddStaticText(0, c4d.BFH_LEFT, name='Plugin Directory *')
+    self.AddFileSelector(self.ID_DIRECTORY, c4d.BFH_SCALEFIT, type='directory')
+    self.GroupEnd()
+    self.GroupEnd() # } MAIN/PARAMS
+
+    self.GroupBegin(0, c4d.BFH_SCALEFIT, 0, 1)  # MAIN/BUTTONS {
+    self.AddButton(self.ID_CREATE, c4d.BFH_LEFT, name='Create')
+    self.AddStaticText(0, c4d.BFH_SCALEFIT)
+    self.AddButton(self.ID_CANCEL, c4d.BFH_LEFT, name='Cancel')
+    self.GroupEnd() # } MAIN/BUTTONS
+
+    self.GroupEnd() # } MAIN
+
+    self.update_enabling()
+    return True
+
+  def Command(self, param_id, bc):
+    if super(ScriptToPluginConverter, self).Command(param_id, bc):
+      return True
+    self.update_enabling()
+    virtual_id = self.ReverseMapId(param_id)[1]
+    if virtual_id == self.ID_CREATE:
+      self.do_create()
+      return True
+    if virtual_id == self.ID_CANCEL:
+      self.Close()
+      return True
+    return True
+
+
 def main():
   DialogOpenerCommand(UserDataToDescriptionResourceConverterDialog)\
     .Register(ID_PLUGIN_CONVERTER, 'UserData to .res Converter')
+  DialogOpenerCommand(ScriptToPluginConverter)\
+    .Register(ID_SCRIPT_CONVERTER, 'Script to Plugin Converter')
