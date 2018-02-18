@@ -138,6 +138,9 @@ class BaseHashDict(object):
   def __iter__(self):
     return self.iterkeys()
 
+  def __contains__(self, key):
+    return self.KeyWrapper(key, self.key_hash) in self._dict
+
   def items(self):
     return list(self.iteritems())
 

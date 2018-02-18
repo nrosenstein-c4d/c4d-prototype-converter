@@ -264,6 +264,10 @@ class SymbolMap(object):
     to the node and registers its descid in this map.
     """
 
+    if node['descid'][-1].dtype == c4d.DTYPE_SEPARATOR and not node['bc'][c4d.DESC_NAME]:
+      node['symbol'] = (None, None)
+      return None, None
+
     # Find a unique name for the symbol.
     name = node['bc'][c4d.DESC_SHORT_NAME] or node['bc'][c4d.DESC_NAME]
     if node['descid'][-1].dtype == c4d.DTYPE_GROUP:
@@ -449,7 +453,9 @@ class UserDataConverter(object):
         template = fp.read()
       context = {
         'c4d': c4d,
-        'parameters': [(symbol_map.descid_to_node[did], did, bc) for did, bc in ud],
+        'parameters': [
+          (symbol_map.descid_to_node[did], did, bc)
+          for did, bc in ud if did in symbol_map.descid_to_node],
         'plugin_class': re.sub('[^\w\d]+', '', self.plugin_name) + 'Data',
         'plugin_type': plugin_type_info['plugintype'],
         'plugin_id': self.plugin_id,
@@ -470,6 +476,9 @@ class UserDataConverter(object):
       return
 
     sym, value = node['symbol']
+    if not sym:
+      return
+
     fp.write(self.indent + '{} = {},\n'.format(sym, value))
 
     children = node['bc'].GetContainerInstance(c4d.DESC_CYCLE)
@@ -482,7 +491,7 @@ class UserDataConverter(object):
 
   def render_parameter(self, fp, node, symbol_map, depth=1):
     bc = node['bc']
-    symbol = symbol_map.descid_to_symbol[node['descid']]
+    symbol = node['symbol'][0]
     dtype = node['descid'][-1].dtype
     if dtype == c4d.DTYPE_GROUP:
       fp.write(self.indent * depth + 'GROUP {} {{\n'.format(symbol))
@@ -637,8 +646,13 @@ class UserDataConverter(object):
         elif bc[c4d.DESC_UNIT] == c4d.DESC_UNIT_METER:
           props.append('UNIT METER;')
 
+      fp.write(self.indent * depth + typename)
+      if symbol:
+        fp.write(' ' + symbol)
+      fp.write(' {')
+
       if any('\n' in x for x in props):
-        fp.write(self.indent * depth + '{} {} {{\n'.format(typename, symbol))
+        fp.write('\n')
         single, multi = [], []
         for prop in props:
           prop = prop.rstrip()
@@ -651,13 +665,15 @@ class UserDataConverter(object):
             fp.write(self.indent * (depth+1) + line + '\n')
         fp.write(self.indent * depth + '}\n')
       else:
-        fp.write(self.indent * depth + '{} {} {{ {}}}\n'.format(
-          typename, symbol, ' '.join(props) + (' ' if props else '')))
+        fp.write(' ' + ' '.join(props) + (' ' if props else ''))
+        fp.write('}\n')
 
   def render_symbol_string(self, fp, node, symbol_map):
     if not node.data or node['descid'] == c4d.DescID(c4d.ID_USERDATA):
       return
-    symbol = symbol_map.descid_to_symbol[node['descid']]
+    symbol = node['symbol'][0]
+    if not symbol:
+      return
     name = unicode_refreplace(node['bc'][c4d.DESC_NAME])
     fp.write(self.indent + '{} "{}";\n'.format(symbol, name))
     cycle = node['bc'][c4d.DESC_CYCLE]
