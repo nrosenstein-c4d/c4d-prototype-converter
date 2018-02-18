@@ -31,7 +31,7 @@ import webbrowser
 
 from .c4dutils import (unicode_refreplace, get_subcontainer, has_subcontainer,
   DialogOpenerCommand, BaseDialog)
-from .codeconv import refactor_expression_script
+from .codeconv import refactor_expression_script, refactor_command_script
 from .generics import Generic, HashDict
 from .little_jinja import little_jinja
 from .utils import makedirs, nullable_ref
@@ -1062,11 +1062,14 @@ class ScriptConverter(object):
   def files(self):
     parent_dir = self.directory or self.plugin_name
     plugin_filename = re.sub('[^\w\d]+', '-', self.plugin_name).lower() + '.pyp'
-    files = {
+    result = {
       'directory': parent_dir,
       'plugin': os.path.join(parent_dir, plugin_filename)
     }
-    return files
+    if self.icon_file:
+      suffix = os.path.splitext(self.icon_file)[1]
+      result['icon'] = j('res', 'icons', f('{self.plugin_name}{suffix}'))
+    return result
 
 
 class ScriptToPluginConverter(BaseDialog):
@@ -1113,9 +1116,33 @@ class ScriptToPluginConverter(BaseDialog):
     self.SetString(self.ID_PLUGIN_NAME, cnv.plugin_name, flags=c4d.EDITTEXT_HELPTEXT)
     self.SetFileSelectorString(self.ID_DIRECTORY, cnv.directory, flags=c4d.EDITTEXT_HELPTEXT)
 
-
   def do_create(self):
-    print("Create!")  # TODO
+    cnv = self.get_converter()
+    cnv.autofill()
+    with open(cnv.script_file) as fp:
+      global_code, member_code = refactor_command_script(fp.read())
+    # Indent the code appropriately for the plugin stub.
+    member_code = '\n'.join('  ' + l for l in member_code.split('\n'))
+    files = cnv.files()
+    print(files)
+    context = {
+      'plugin_name': cnv.plugin_name,
+      'plugin_id': cnv.plugin_id.strip(),
+      'plugin_class': re.sub('[^\w\d]+', '', cnv.plugin_name),
+      'plugin_icon': 'res/icons/' + os.path.basename(files['icon']) if files.get('icon') else None,
+      'global_code': global_code,
+      'member_code': member_code,
+    }
+    with open(res_file('templates/command_plugin.txt')) as fp:
+      template = fp.read()
+    if files.get('icon'):
+      makedirs(os.path.dirname(files['icon']))
+      shutil.copy(cnv.icon_file, files['icon'])
+    print('Creating', files['plugin'])
+    makedirs(os.path.dirname(files['plugin']))
+    with open(files['plugin'], 'w') as fp:
+      fp.write(little_jinja(template, context))
+    c4d.storage.ShowInFinder(files['directory'])
 
   def CreateLayout(self):
     self.SetTitle('Script to Plugin Converter')

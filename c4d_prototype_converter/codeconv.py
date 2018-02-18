@@ -135,5 +135,26 @@ def refactor_expression_script(code, kind):
     raise ValueError(kind)
 
   rt = RefactoringTool(fixers.values())
-  code = rt.refactor_string(code, '<string>')
+  code = str(rt.refactor_string(code, '<string>'))
   return (code, '\n'.join(str(n) for fixer in fixers.values() for n in fixer.results))
+
+
+def refactor_command_script(code):
+  """
+  Refactors Python code that is used as a script in the Cinema 4D Sript
+  Manager. Returns a tuple of two strings -- the first being *code* without
+  the functions that are moved to the member functions and the second being
+  the refactored member functions (indentation unchanged).
+  """
+
+  fixer = FixFunctionDef('main', 'Execite', ['self', 'doc'], add_statement='return True', remove=True)
+  rt = RefactoringTool([fixer])
+  code = str(rt.refactor_string(code, '<string>'))
+  if not fixer.results:
+    lines = ['def Execute(self, doc):']
+    for line in code.split('\n'):
+      lines.append('  ' + line)
+    lines.append('  return True')
+    return (None, '\n'.join(lines))  # Everything is member code
+  else:
+    return (code, str(fixer.results[0]))

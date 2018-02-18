@@ -2,8 +2,8 @@
 
 import c4d
 
-
 {%- if plugin_icon -%}
+
 def load_bitmap(path):
   path = os.path.join(os.path.dirname(__file__), path)
   bmp = c4d.bitmaps.BaseBitmap()
@@ -13,6 +13,7 @@ def load_bitmap(path):
 
 {%- endif -%}
 {%- if global_code -%}
+
 # ============================================================================
 # This code was automatically copied from the Python Object/Tag.
 {{ global_code }}
