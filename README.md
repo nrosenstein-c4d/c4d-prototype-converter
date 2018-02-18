@@ -7,12 +7,6 @@ to a plugin.
 
 ![](https://i.imgur.com/FCyghJm.png)
 
-__To do__
-
-* [ ] Support Longitude/Latitude customgui for REAL parameters
-* [ ] Support QuickTab & Radio customgui for LONG parameters
-* [ ] Support for GROUP titlebar option
-
 ### Features
 
 * Converts UserData to Cinema 4D description resource files

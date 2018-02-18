@@ -552,7 +552,11 @@ class UserDataConverter(object):
           props.append('CUSTOMGUI REALSLIDER;')
         elif bc[c4d.DESC_CUSTOMGUI] == c4d.CUSTOMGUI_REALSLIDERONLY:
           props.append('CUSTOMGUI REALSLIDERONLY;')
-        # TODO: LATLON customgui
+        elif bc[c4d.DESC_CUSTOMGUI] == c4d.CUSTOMGUI_LONG_LAT:
+          props.append('CUSTOMGUI LONG_LAT;')
+        else:
+          print('Note: unknown customgui:', bc[c4d.DESC_NAME], bc[c4d.DESC_CUSTOMGUI])
+        # TODO: Quick Tab/Radio Button customgui
 
         if not has_cycle:
           if bc.GetType(c4d.DESC_MIN) == dtype and not is_minvalue(bc[c4d.DESC_MIN]):
