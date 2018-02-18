@@ -137,9 +137,3 @@ def refactor_expression_script(code, kind):
   rt = RefactoringTool(fixers.values())
   code = rt.refactor_string(code, '<string>')
   return (code, '\n'.join(str(n) for fixer in fixers.values() for n in fixer.results))
-
-print(refactor_expression_script('''
-def main():
-  pass
-''', 'ObjectData')[1])
-
