@@ -243,6 +243,7 @@ class SymbolMap(object):
     self.symbols = collections.OrderedDict()
     self.descid_to_symbol = HashDict()
     self.descid_to_node = HashDict()
+    self.hardcoded_description = HashDict()
     self.prefix = prefix
 
   def translate_name(self, name, add_prefix=True, unique=True):
@@ -298,6 +299,10 @@ class SymbolMap(object):
     if not symbol:
       symbol = self.allocate_symbol(node)[0]
     return symbol + '_' + self.translate_name(cycle_name, False, False)
+
+  def add_hardcoded_description(self, node, param, value):
+    params = self.hardcoded_description.setdefault(node['descid'], [])
+    params.append((param, value))
 
 
 class UserDataConverter(object):
@@ -456,6 +461,10 @@ class UserDataConverter(object):
         'parameters': [
           (symbol_map.descid_to_node[did], did, bc)
           for did, bc in ud if did in symbol_map.descid_to_node],
+        'hardcoded_description': [
+          (symbol_map.descid_to_node[did], params)
+          for did, params in symbol_map.hardcoded_description.items()
+        ],
         'plugin_class': re.sub('[^\w\d]+', '', self.plugin_name) + 'Data',
         'plugin_type': plugin_type_info['plugintype'],
         'plugin_id': self.plugin_id,
@@ -554,6 +563,13 @@ class UserDataConverter(object):
           props.append('CUSTOMGUI REALSLIDERONLY;')
         elif bc[c4d.DESC_CUSTOMGUI] == c4d.CUSTOMGUI_LONG_LAT:
           props.append('CUSTOMGUI LONG_LAT;')
+        # QuickTab CustomGUI (btw. for some reason not the same as
+        # c4d.CUSTOMGUI_QUICKTAB)
+        elif bc[c4d.DESC_CUSTOMGUI] == 200000281:
+          symbol_map.add_hardcoded_description(node, 'c4d.DESC_CUSTOMGUI', 200000281)
+        # RadioButtons CustomGUI.
+        elif bc[c4d.DESC_CUSTOMGUI] == 1019603:
+          symbol_map.add_hardcoded_description(node, 'c4d.DESC_CUSTOMGUI', 1019603)
         else:
           print('Note: unknown customgui:', bc[c4d.DESC_NAME], bc[c4d.DESC_CUSTOMGUI])
         # TODO: Quick Tab/Radio Button customgui

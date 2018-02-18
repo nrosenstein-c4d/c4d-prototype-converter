@@ -87,6 +87,21 @@ class {{ plugin_class }}(c4d.plugins.{{ plugin_type }}Data):
   def Message(self, node, msg_type, data):
     return True
 
+  {%- if hardcoded_description -%}
+  def GetDDescription(self, node, desc, flags):
+    if not desc.LoadDescription(node.GetType()):
+      return False
+    singleid = desc.GetSingleDescID()
+    {%- for node, params in hardcoded_description -%}
+    if not singleid or singleid == res.{{ node['symbol'][0] }}:
+      bc = desc.GetParameterI(res.{{ node['symbol'][0] }}, None)
+      {%- for param, value in params -%}
+      bc[{{ param }}] = {{ repr(value) }}
+      {%- endfor -%}
+    {%- endfor -%}
+    return (True, flags | c4d.DESCFLAGS_DESC_LOADED)
+
+  {%- endif -%}
 
 if __name__ == '__main__':
   {{ plugin_class }}.Register()
