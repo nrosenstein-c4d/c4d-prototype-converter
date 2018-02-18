@@ -240,7 +240,7 @@ COLOR_YELLOW = c4d.Vector(0.9, 0.8, 0.6)
 
 class SymbolMap(object):
   """
-  A map for User Data symbols used in the #UserDataConverter.
+  A map for User Data symbols used in the #PrototypeConverter.
   """
 
   def __init__(self, prefix):
@@ -310,7 +310,7 @@ class SymbolMap(object):
     params.append((param, value))
 
 
-class UserDataConverter(object):
+class PrototypeConverter(object):
   """
   This object holds the information on how the description resource will
   be generated.
@@ -388,9 +388,9 @@ class UserDataConverter(object):
 
   def create(self):
     if not self.directory:
-      raise RuntimeError('UserDataConverter.directory must be set')
+      raise RuntimeError('PrototypeConverter.directory must be set')
     if not self.link:
-      raise RuntimeError('UserDataConverter.link must be set')
+      raise RuntimeError('PrototypeConverter.link must be set')
     if self.icon_file and not os.path.isfile(self.icon_file):
       raise IOError('File "{}" does not exist'.format(self.icon_file))
 
@@ -769,7 +769,7 @@ class UserDataConverter(object):
     return False
 
 
-class UserDataToDescriptionResourceConverterDialog(BaseDialog):
+class PrototypeConverterDialog(BaseDialog):
   """
   Implements the User Interface to convert an object's UserData to a
   Cinema 4D description resource.
@@ -808,7 +808,7 @@ class UserDataToDescriptionResourceConverterDialog(BaseDialog):
   def get_converter(self):
     mode = self.GetInt32(self.ID_MODE)
     symbol_mode = {self.SYMBOLMODE_C4D: 'c4d', self.SYMBOLMODE_C4DDEV: 'c4ddev'}[self.GetInt32(self.ID_SYMBOLMODE)]
-    return UserDataConverter(
+    return PrototypeConverter(
       link = self.GetLink(self.ID_LINK),
       plugin_name = self.GetString(self.ID_PLUGIN_NAME),
       plugin_id = self.GetString(self.ID_PLUGIN_ID).strip(),
@@ -922,7 +922,7 @@ class UserDataToDescriptionResourceConverterDialog(BaseDialog):
   # c4d.gui.GeDialog
 
   def CreateLayout(self):
-    self.SetTitle('UserData to Description Resource (.res) Converter')
+    self.SetTitle('Prototype to Node Plugin Converter')
     self.GroupBorderSpace(6, 6, 6, 6)
     self.GroupBegin(0, c4d.BFH_SCALEFIT | c4d.BFV_TOP, 0, 1)  # MAIN {
     self.GroupBegin(0, c4d.BFH_SCALEFIT | c4d.BFV_SCALEFIT, 1, 0)  # MAIN/LEFT {
@@ -1072,7 +1072,7 @@ class ScriptConverter(object):
     return result
 
 
-class ScriptToPluginConverter(BaseDialog):
+class ScriptConverterDialog(BaseDialog):
   """
   This dialog implements the User Interface for converting Cinema 4D Python
   scripts for the Script Manager to Python plugins.
@@ -1144,7 +1144,7 @@ class ScriptToPluginConverter(BaseDialog):
     c4d.storage.ShowInFinder(files['directory'])
 
   def CreateLayout(self):
-    self.SetTitle('Script to Plugin Converter')
+    self.SetTitle('Script to Command Plugin Converter')
     self.GroupBorderSpace(6, 6, 6, 6)
     self.GroupBegin(0, c4d.BFH_SCALEFIT, 1, 0)  # MAIN {
 
@@ -1178,7 +1178,7 @@ class ScriptToPluginConverter(BaseDialog):
     return True
 
   def Command(self, param_id, bc):
-    if super(ScriptToPluginConverter, self).Command(param_id, bc):
+    if super(ScriptConverterDialog, self).Command(param_id, bc):
       return True
     self.update_enabling()
     virtual_id = self.ReverseMapId(param_id)[1]
@@ -1192,7 +1192,7 @@ class ScriptToPluginConverter(BaseDialog):
 
 
 def main():
-  DialogOpenerCommand(UserDataToDescriptionResourceConverterDialog)\
-    .Register(ID_PLUGIN_CONVERTER, 'UserData to .res Converter')
-  DialogOpenerCommand(ScriptToPluginConverter)\
-    .Register(ID_SCRIPT_CONVERTER, 'Script to Plugin Converter')
+  DialogOpenerCommand(PrototypeConverterDialog)\
+    .Register(ID_PLUGIN_CONVERTER, 'Prototype to Node Plugin Converter')
+  DialogOpenerCommand(ScriptConverterDialog)\
+    .Register(ID_SCRIPT_CONVERTER, 'Script to Command Plugin Converter')

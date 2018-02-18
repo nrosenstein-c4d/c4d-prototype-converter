@@ -7,6 +7,8 @@ to a plugin.
 
 ![](https://i.imgur.com/LDwIgrj.png)
 
+![](https://i.imgur.com/l5X3inG.png)
+
 ### Features
 
 * Converts UserData to Cinema 4D description resource files
