@@ -147,7 +147,7 @@ def refactor_command_script(code):
   the refactored member functions (indentation unchanged).
   """
 
-  fixer = FixFunctionDef('main', 'Execite', ['self', 'doc'], add_statement='return True', remove=True)
+  fixer = FixFunctionDef('main', 'Execute', ['self', 'doc'], add_statement='return True', remove=True)
   rt = RefactoringTool([fixer])
   code = str(rt.refactor_string(code, '<string>'))
   if not fixer.results:

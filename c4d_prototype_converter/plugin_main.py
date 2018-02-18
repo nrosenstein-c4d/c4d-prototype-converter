@@ -1124,7 +1124,6 @@ class ScriptToPluginConverter(BaseDialog):
     # Indent the code appropriately for the plugin stub.
     member_code = '\n'.join('  ' + l for l in member_code.split('\n'))
     files = cnv.files()
-    print(files)
     context = {
       'plugin_name': cnv.plugin_name,
       'plugin_id': cnv.plugin_id.strip(),

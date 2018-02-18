@@ -26,7 +26,7 @@ class {{ plugin_class }}(c4d.plugins.CommandData):
   PLUGIN_ID = {{ plugin_id }}
   PLUGIN_NAME = {{ repr(plugin_name) }}
   PLUGIN_INFO = 0
-  PLUGIN_ICON = {% if plugin_icon %}load_bitmap({{ repr(plugin_icon) }}){% else %}None{% endif %}
+  PLUGIN_ICON = {{ 'load_bitmap({!r})'.format(plugin_icon) if plugin_icon else 'None' }}
   PLUGIN_HELP = ""
 
   def Register(self):
@@ -41,7 +41,7 @@ class {{ plugin_class }}(c4d.plugins.CommandData):
   # ==========================================================================
   {%- else -%}
   def Execute(self, doc):
-    print 'Hello, World!'
+    c4d.gui.MessageDialog('Hello, World!')
     return True
   {%- endif -%}
 
