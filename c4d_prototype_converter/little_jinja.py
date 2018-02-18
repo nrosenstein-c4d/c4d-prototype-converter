@@ -144,7 +144,7 @@ def little_jinja(template_string, context):
       open_blocks[-1].sub.append(Node('var', match.group(1), None))
     elif kind in ('if', 'elif', 'else', 'endif'):
       if kind == 'if':
-        if_node = Node('if', {'elif': [], 'else': None, 'cond': match.group(1)}, [])
+        if_node = Node('if', {'elif': [], 'else': None, 'cond': match.group(1), 'index': match.start()}, [])
         open_blocks[-1].sub.append(if_node)
         open_blocks.append(if_node)
       elif kind == 'elif':
@@ -175,7 +175,7 @@ def little_jinja(template_string, context):
     elif kind in ('for', 'endfor'):
       if kind == 'for':
         varnames, expr = match.group(1), match.group(2)
-        for_node = Node('for', {'varnames': varnames.split(','), 'expr': expr}, [])
+        for_node = Node('for', {'varnames': varnames.split(','), 'expr': expr, 'index': match.start()}, [])
         open_blocks[-1].sub.append(for_node)
         open_blocks.append(for_node)
       elif kind == 'endfor':
@@ -194,8 +194,10 @@ def little_jinja(template_string, context):
   open_blocks[-1].sub.append(Node('text', scanner.behind(), None))
 
   if len(open_blocks) != 1:
-    raise ValueError('invalid template: unclosed {} block'
-      .format(open_blocks[-1].type))
+    node = open_blocks[-1]
+    line = 1 + template_string.count('\n', 0, node.data['index'])
+    raise ValueError('invalid template: unclosed {} block at line {}'
+      .format(node.type, line))
 
   out = StringIO()
   def render(node, context):
