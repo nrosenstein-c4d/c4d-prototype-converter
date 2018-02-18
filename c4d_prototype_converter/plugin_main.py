@@ -31,6 +31,7 @@ import webbrowser
 
 from .c4dutils import (unicode_refreplace, get_subcontainer, has_subcontainer,
   DialogOpenerCommand, BaseDialog)
+from .codeconv import refactor_expression_script
 from .generics import Generic, HashDict
 from .little_jinja import little_jinja
 from .utils import makedirs, nullable_ref
@@ -457,6 +458,26 @@ class UserDataConverter(object):
       makedirs(os.path.dirname(files['plugin']))
       with open(res_file('templates/plugin_stub.txt')) as fp:
         template = fp.read()
+
+      Opython = 1023866
+      plugin_flags = ''
+      if self.link.CheckType(Opython) or self.link.CheckType(c4d.Tpython):
+        if self.link.CheckType(Opython):
+          kind = 'ObjectData'
+          code = self.link[c4d.OPYTHON_CODE]
+          plugin_flags = 'c4d.OBJECT_GENERATOR'
+        else:
+          kind = 'TagData'
+          code = self.link[c4d.TPYTHON_CODE]
+          plugin_flags = 'c4d.TAG_VISIBLE | c4d.TAG_EXPRESSION'
+        global_code, member_code = refactor_expression_script(code, kind)
+      else:
+        global_code, member_code = None, None
+
+      if member_code:
+        # Indent the code appropriately for the plugin stub.
+        member_code = '\n'.join('  ' + l for l in member_code.split('\n'))
+
       context = {
         'c4d': c4d,
         'parameters': [
@@ -466,11 +487,13 @@ class UserDataConverter(object):
           (symbol_map.descid_to_node[did], params)
           for did, params in symbol_map.hardcoded_description.items()
         ],
+        'global_code': global_code,
+        'member_code': member_code,
         'plugin_class': re.sub('[^\w\d]+', '', self.plugin_name) + 'Data',
         'plugin_type': plugin_type_info['plugintype'],
         'plugin_id': self.plugin_id,
         'plugin_name': self.plugin_name,
-        'plugin_info': 0,
+        'plugin_info': plugin_flags,
         'plugin_desc': self.resource_name,
         'plugin_icon': 'res/icons/' + os.path.basename(files['icon']) if files.get('icon') else None,
         'symbol_mode': self.symbol_mode,

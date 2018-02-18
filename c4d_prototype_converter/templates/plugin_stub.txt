@@ -37,6 +37,13 @@ def load_bitmap(path):
   return bmp
 
 {%- endif -%}
+{%- if global_code -%}
+# ============================================================================
+# This code was automatically copied from the Python Object/Tag.
+{{ global_code }}
+# ============================================================================
+
+{%- endif -%}
 
 class {{ plugin_class }}(c4d.plugins.{{ plugin_type }}Data):
 
@@ -95,9 +102,6 @@ class {{ plugin_class }}(c4d.plugins.{{ plugin_type }}Data):
     {%- endfor -%}
     return True
 
-  def Message(self, node, msg_type, data):
-    return True
-
   {%- if hardcoded_description -%}
   def GetDDescription(self, node, desc, flags):
     if not desc.LoadDescription(node.GetType()):
@@ -112,6 +116,12 @@ class {{ plugin_class }}(c4d.plugins.{{ plugin_type }}Data):
     {%- endfor -%}
     return (True, flags | c4d.DESCFLAGS_DESC_LOADED)
 
+  {%- endif -%}
+  {%- if member_code -%}
+  # ==========================================================================
+  # This code was automatically transfered from the Python Object/Tag.
+{{ member_code }}
+  # ==========================================================================
   {%- endif -%}
 
 if __name__ == '__main__':
