@@ -1,0 +1,49 @@
+# Copyright (c) <year> <author>
+
+import c4d
+
+
+{%- if plugin_icon -%}
+def load_bitmap(path):
+  path = os.path.join(os.path.dirname(__file__), path)
+  bmp = c4d.bitmaps.BaseBitmap()
+  if bmp.InitWith(path)[0] != c4d.IMAGERESULT_OK:
+    bmp = None
+  return bmp
+
+{%- endif -%}
+{%- if global_code -%}
+# ============================================================================
+# This code was automatically copied from the Python Object/Tag.
+{{ global_code }}
+# ============================================================================
+
+{%- endif -%}
+
+class {{ plugin_class }}(c4d.plugins.CommandData):
+
+  PLUGIN_ID = {{ plugin_id }}
+  PLUGIN_NAME = {{ repr(plugin_name) }}
+  PLUGIN_INFO = 0
+  PLUGIN_ICON = {% if plugin_icon %}load_bitmap({{ repr(plugin_icon) }}){% else %}None{% endif %}
+  PLUGIN_HELP = ""
+
+  def Register(self):
+    return c4d.plugins.RegisterCommandPlugin(
+      self.PLUGIN_ID, self.PLUGIN_NAME, self.PLUGIN_INFO, self.PLUGIN_ICON,
+      self.PLUGIN_HELP, self)
+
+  {%- if member_code -%}
+  # ==========================================================================
+  # This code was automatically transfered from the Python Object/Tag.
+{{ member_code }}
+  # ==========================================================================
+  {%- else -%}
+  def Execute(self, doc):
+    print 'Hello, World!'
+    return True
+  {%- endif -%}
+
+
+if __name__ == '__main__':
+  {{ plugin_class }}().Register()

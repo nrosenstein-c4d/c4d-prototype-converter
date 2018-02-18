@@ -457,7 +457,7 @@ class UserDataConverter(object):
 
     if 'plugin' in files and (self.overwrite or not os.path.isfile(files['plugin'])):
       makedirs(os.path.dirname(files['plugin']))
-      with open(res_file('templates/plugin_stub.txt')) as fp:
+      with open(res_file('templates/node_plugin.txt')) as fp:
         template = fp.read()
 
       Opython = 1023866
