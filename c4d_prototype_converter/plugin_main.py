@@ -1134,9 +1134,12 @@ class ScriptConverterDialog(BaseDialog):
     }
     with open(res_file('templates/command_plugin.txt')) as fp:
       template = fp.read()
-    if files.get('icon'):
+    if files.get('icon') and files.get('icon') != cnv.icon_file:
       makedirs(os.path.dirname(files['icon']))
-      shutil.copy(cnv.icon_file, files['icon'])
+      try:
+        shutil.copy(cnv.icon_file, files['icon'])
+      except shutil.Error as exc:
+        print('Warning: Error copying icon:', exc)
     print('Creating', files['plugin'])
     makedirs(os.path.dirname(files['plugin']))
     with open(files['plugin'], 'w') as fp:
