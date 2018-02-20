@@ -478,9 +478,12 @@ class UserDataConverter(object):
       with open(files['plugin'], 'w') as fp:
         fp.write(little_jinja(template, context))
 
-    if self.icon_file:
+    if self.icon_file and self.icon_file != files['icon']:
       makedirs(os.path.dirname(files['icon']))
-      shutil.copy(self.icon_file, files['icon'])
+      try:
+        shutil.copy(self.icon_file, files['icon'])
+      except shutil.Error as exc:
+        print('Warning: Error copying icon:', exc)
 
   def render_symbol(self, fp, node, symbol_map):
     if not node.data or node['descid'] == c4d.DescID(c4d.ID_USERDATA):
