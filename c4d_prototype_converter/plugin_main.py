@@ -31,7 +31,7 @@ import webbrowser
 
 from . import codeconv
 from .c4dutils import (unicode_refreplace, get_subcontainer, has_subcontainer,
-  DialogOpenerCommand, BaseDialog)
+  find_menu_resource, DialogOpenerCommand, BaseDialog)
 from .generics import Generic, HashDict
 from .little_jinja import little_jinja
 from .utils import makedirs, nullable_ref
@@ -929,7 +929,7 @@ class PrototypeConverterDialog(BaseDialog):
   # c4d.gui.GeDialog
 
   def CreateLayout(self):
-    self.SetTitle('Prototype to Node Plugin Converter')
+    self.SetTitle('Prototype Converter')
     self.GroupBorderSpace(6, 6, 6, 6)
     self.GroupBegin(0, c4d.BFH_SCALEFIT | c4d.BFV_TOP, 0, 1)  # MAIN {
     self.GroupBegin(0, c4d.BFH_SCALEFIT | c4d.BFV_SCALEFIT, 1, 0)  # MAIN/LEFT {
@@ -1204,7 +1204,17 @@ class ScriptConverterDialog(BaseDialog):
 
 
 def main():
-  DialogOpenerCommand(PrototypeConverterDialog)\
-    .Register(ID_PLUGIN_CONVERTER, 'Prototype to Node Plugin Converter')
   DialogOpenerCommand(ScriptConverterDialog)\
-    .Register(ID_SCRIPT_CONVERTER, 'Script to Command Plugin Converter')
+    .Register(ID_SCRIPT_CONVERTER, 'Script Converter...', c4d.PLUGINFLAG_HIDE)
+  DialogOpenerCommand(PrototypeConverterDialog)\
+    .Register(ID_PLUGIN_CONVERTER, 'Prototype Converter...', c4d.PLUGINFLAG_HIDE)
+
+
+def PluginMessage(msg_id, data):
+  if msg_id == c4d.C4DPL_BUILDMENU:
+    bc = find_menu_resource('M_EDITOR', 'IDS_SCRIPTING_MAIN')
+    bc.InsData(c4d.MENURESOURCE_SEPERATOR, True)
+    bc.InsData(c4d.MENURESOURCE_COMMAND, 'PLUGIN_CMD_' + str(ID_SCRIPT_CONVERTER))
+    bc.InsData(c4d.MENURESOURCE_COMMAND, 'PLUGIN_CMD_' + str(ID_PLUGIN_CONVERTER))
+    return True
+  return False

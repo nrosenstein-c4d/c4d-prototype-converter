@@ -37,6 +37,7 @@ del blob, b, t, z, m;
 
 
 with localimport('.') as _importer:
-  from c4d_prototype_converter.plugin_main import main
+  from c4d_prototype_converter import plugin_main as main
+  PluginMessage = main.PluginMessage
   if __name__ == '__main__':
-    main()
+    main.main()

@@ -69,6 +69,26 @@ def has_subcontainer(bc, sub_id):
   return bc.GetType(sub_id) == c4d.DA_CONTAINER
 
 
+def find_menu_resource(*path):
+  bc = c4d.gui.GetMenuResource(path[0])
+  for menu in path[1:]:
+    found = False
+    index = 0
+    while True:
+      key = bc.GetIndexId(index)
+      if key == c4d.NOTOK: break
+      if key == c4d.MENURESOURCE_SUBMENU:
+        subbc = bc.GetIndexData(index)
+        if subbc[c4d.MENURESOURCE_SUBTITLE] == menu:
+          found = True
+          bc = subbc
+          break
+      index += 1
+    if not found:
+      return None
+  return bc
+
+
 class DialogOpenerCommand(c4d.plugins.CommandData):
   """
   Command plugin that opens a dialog.
