@@ -3,21 +3,25 @@
 ![](https://img.shields.io/badge/License-MIT-yellow.svg)
 
 This plugin aids you in converting your Cinema 4D Python plugin prototype
-to a plugin. It uses `lib2to3` to refactor your code.
-
-### Features
+to a plugin.
 
 <table>
   <tr>
     <th colspan="2" align="left">Script Converter</th>
+    <th></th>
   </tr>
   <tr>
     <td><img src="https://i.imgur.com/OV08gew.png" width="auto"></td>
     <td>
 
-This tool converts a Cinema 4D Python Script to a `CommandData` plugin. The
-script should contain a `main()` function. This function will be automatically
-refactored to match the `CommandData.Execute()` method function.
+This tool converts a Cinema 4D Python Script to a `CommandData` plugin.
+Scripts you convert with this tool should have a `main()` function.
+
+#### Features
+
+* The `main()` function will be automatically converted to a
+  `CommandData.Execute()` method
+
     </td>
   </tr>
   <tr>
@@ -28,14 +32,45 @@ refactored to match the `CommandData.Execute()` method function.
     <td>
 
 This tool converts a Cinema 4D Python Generator or Expression Tag to a
-`ObjectData` or `TagData` plugin. It will also convert any User Data on
-the object/tag to a Cinema 4D description resource. The `main()` and
-`message()` functions will be automatically refactored to match the
-`ObjectData.GetVirtualObjects()`/`TagData.Execute()` and `NodeData.Message()`
-methods respectively.
+`ObjectData` or `TagData` plugin.
+
+#### Features
+
+* Converts UserData to description resource files
+* Converts `main()` and `message()` functions in your Python code to the
+  respective plugin member method (`GetVirtualObjects()`, `Execute()`, `Message()`)
+
     </td>
   </tr>
 </table>
+
+### FAQ
+
+<details><summary>How to install the Plugin?</summary>
+
+> Simply download the source code from the GitHub repository and unpack it
+> into your Cinema 4D plugins folder.
+>
+> ![](https://i.imgur.com/v1KiKNf.png)
+
+</details>
+
+<details><summary>Where to find the Plugin in Cinema 4D?</summary>
+
+> After you have installed the plugin, you can find it in the Cinema 4D
+> Script menu.
+> 
+> ![](https://i.imgur.com/lgRnazt.png)
+
+</details>
+
+<details><summary>How does the code refactoring work?</summary>
+
+> We use the `lib2to3` module from the Python standard library to parse and
+> transform your code so that it (somewhat) matches the way it needs to be
+> for Python plugins and to adjust the indentation.
+
+</details>
 
 ### Ideas for the Future
 
