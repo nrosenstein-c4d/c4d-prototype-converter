@@ -114,32 +114,108 @@ class FixFunctionDef(DelayBindBaseFix):
       return node
 
 
-def refactor_expression_script(code, kind):
+class FixIndentation(DelayBindBaseFix):
+
+  # Code from http://python3porting.com/fixers.html#modifying-the-parse-tree
+
+  def __init__(self, new_indent):
+    self.indents = []
+    self.line = 0
+    self.new_indent = new_indent
+
+  def match(self, node):
+    if isinstance(node, Leaf):
+      return True
+    return False
+
+  def transform(self, node, results):
+    if node.type == token.INDENT:
+      self.line = node.lineno
+      self.indents.append(len(node.value))
+      new_indent = self.new_indent * len(self.indents)
+      if node.value != new_indent:
+        node.value = new_indent
+        return node
+    elif node.type == token.DEDENT:
+      self.line = node.lineno
+      if node.column == 0:
+        self.indents = []
+      else:
+        level = self.indents.index(node.column)
+        self.indents = self.indents[:level+1]
+        if node.prefix:
+          # During INDENT's the indentation level is
+          # in the value. However, during OUTDENT's
+          # the value is an empty string and then
+          # indentation level is instead in the last
+          # line of the prefix. So we remove the last
+          # line of the prefix and add the correct
+          # indententation as a new last line.
+          prefix_lines = node.prefix.split('\n')[:-1]
+          prefix_lines.append(self.new_indent * len(self.indents))
+          new_prefix = '\n'.join(prefix_lines)
+          if node.prefix != new_prefix:
+            node.prefix = new_prefix
+            # Return the modified node:
+            return node
+    elif self.line != node.lineno:  # New line
+      self.line = node.lineno
+      if not self.indents:
+        return None  # First line, do nothing
+      elif node.prefix:
+        # Continues the same indentation
+        # This lines intentation is the last line
+        # of the prefix, as during DEDENTS. Remove
+        # the old indentation and add the correct
+        # indententation as a new last line.
+        prefix_lines = node.prefix.split('\n')[:-1]
+        prefix_lines.append(self.new_indent * len(self.indents))
+        new_prefix = '\n'.join(prefix_lines)
+        if node.prefix != new_prefix:
+          node.prefix = new_prefix
+          # Return the modified node:
+          return node
+
+    return None
+
+
+def refactor_expression_script(code, kind, indent=None):
   """
   Refactors Python code that is used in Python Generator or Expression Tag.
   Returns a tuple of two strings -- the first being *code* without the
   functions that are moved to member functions and the second being the
   refactored member functions (indentation unchanged).
 
+  If *indent* is specified, it must be a string that represents a single
+  indentation level. The indent of the code will be adjusted accordingly.
+
   The *kind* must be either the string `'ObjectData'` or `'TagData'`.
   """
 
-  fixers = {
-    'message': FixFunctionDef('message', 'Message', ['self', 'op'], add_statement='return True', remove=True)
-  }
+  fixers = []
+  fixers.append(FixFunctionDef('message', 'Message', ['self', 'op'],
+      add_statement='return True', remove=True))
+
   if kind == 'ObjectData':
-    fixers['main'] = FixFunctionDef('main', 'GetVirtualObjects', ['self', 'op', 'hh'], remove=True)
+    fixers.append(FixFunctionDef('main', 'GetVirtualObjects',
+      ['self', 'op', 'hh'], remove=True))
   elif kind == 'TagData':
-    fixers['main'] = FixFunctionDef('main', 'Execute', ['self', 'op', 'doc', 'host', 'bt', 'priority', 'flags'], remove=True)
+    fixers.append(FixFunctionDef('main', 'Execute',
+      ['self', 'op', 'doc', 'host', 'bt', 'priority', 'flags'], remove=True))
   else:
     raise ValueError(kind)
 
-  rt = RefactoringTool(fixers.values())
+  if indent:
+    fixers.append(FixIndentation(indent))
+
+  rt = RefactoringTool(fixers)
   code = str(rt.refactor_string(code, '<string>'))
-  return (code, '\n'.join(str(n) for fixer in fixers.values() for n in fixer.results))
+  methods = (x for fixer in fixers if isinstance(fixer, FixFunctionDef)
+              for x in fixer.results)
+  return (code, '\n\n'.join(str(x).rstrip() for x in methods))
 
 
-def refactor_command_script(code):
+def refactor_command_script(code, indent=None):
   """
   Refactors Python code that is used as a script in the Cinema 4D Sript
   Manager. Returns a tuple of two strings -- the first being *code* without
@@ -147,14 +223,21 @@ def refactor_command_script(code):
   the refactored member functions (indentation unchanged).
   """
 
-  fixer = FixFunctionDef('main', 'Execute', ['self', 'doc'], add_statement='return True', remove=True)
-  rt = RefactoringTool([fixer])
+  fixers = []
+  fixers.append(FixFunctionDef('main', 'Execute', ['self', 'doc'],
+    add_statement='return True', remove=True))
+
+  if indent:
+    fixers.append(FixIndentation(indent))
+
+  rt = RefactoringTool(fixers)
   code = str(rt.refactor_string(code, '<string>'))
-  if not fixer.results:
+
+  if not fixers[0].results:
     lines = ['def Execute(self, doc):']
     for line in code.split('\n'):
       lines.append('  ' + line)
     lines.append('  return True')
     return (None, '\n'.join(lines))  # Everything is member code
   else:
-    return (code, str(fixer.results[0]))
+    return (code, str(fixers[0].results[0]))

@@ -474,7 +474,7 @@ class PrototypeConverter(object):
           kind = 'TagData'
           code = self.link[c4d.TPYTHON_CODE]
           plugin_flags = 'c4d.TAG_VISIBLE | c4d.TAG_EXPRESSION'
-        global_code, member_code = refactor_expression_script(code, kind)
+        global_code, member_code = refactor_expression_script(code, kind, indent='  ')
       else:
         global_code, member_code = None, None
 
@@ -1120,7 +1120,7 @@ class ScriptConverterDialog(BaseDialog):
     cnv = self.get_converter()
     cnv.autofill()
     with open(cnv.script_file) as fp:
-      global_code, member_code = refactor_command_script(fp.read())
+      global_code, member_code = refactor_command_script(fp.read(), indent='  ')
     # Indent the code appropriately for the plugin stub.
     member_code = '\n'.join('  ' + l for l in member_code.split('\n'))
     files = cnv.files()
