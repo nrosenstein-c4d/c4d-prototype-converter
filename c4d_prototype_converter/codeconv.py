@@ -26,7 +26,7 @@ Python Plugins.
 """
 
 from lib2to3.fixer_base import BaseFix
-from lib2to3.fixer_util import Leaf, Node, find_indentation
+from lib2to3.fixer_util import Leaf, Node, BlankLine, find_indentation
 from lib2to3.pgen2 import token
 from lib2to3.pygram import python_symbols
 from lib2to3 import refactor
@@ -179,12 +179,52 @@ class FixIndentation(DelayBindBaseFix):
     return None
 
 
+class FixStripFutureImports(DelayBindBaseFix):
+
+  PATTERN = '''
+    import_from< 'from' module_name="__future__" 'import' any >
+  '''
+
+  def __init__(self):
+    self.imports = []
+
+  @property
+  def future_line(self):
+    if self.imports:
+      return 'from __future__ import {}'.format(', '.join(self.imports))
+    else:
+      return None
+
+  def transform(self, node, results):
+    passed_import = False
+    for child in node.children:
+      if isinstance(child, Leaf) and child.type == token.NAME and child.value == 'import':
+        passed_import = True
+        continue
+      if not passed_import:
+        continue
+      if isinstance(child, Node) and child.type == python_symbols.import_as_names:
+        # from x import a, b
+        for leaf in child.children:
+          if leaf.type == token.NAME and leaf.value not in self.imports:
+            self.imports.append(leaf.value)
+      elif isinstance(child, Leaf) and child.type == token.NAME:
+        # from x import a
+        if child.value not in self.imports:
+          self.imports.append(child.value)
+    new = BlankLine()
+    new.prefix = node.prefix
+    return new
+
+
 def refactor_expression_script(code, kind, indent=None):
   """
   Refactors Python code that is used in Python Generator or Expression Tag.
-  Returns a tuple of two strings -- the first being *code* without the
-  functions that are moved to member functions and the second being the
-  refactored member functions (indentation unchanged).
+  Returns a tuple of three values strings:
+
+  1. A string that represents imports from the `__future__` module
+  2. The code without functions that are moved to member functions
+  3. The refactored member functions (indentation unchanged)
 
   If *indent* is specified, it must be a string that represents a single
   indentation level. The indent of the code will be adjusted accordingly.
@@ -193,6 +233,7 @@ def refactor_expression_script(code, kind, indent=None):
   """
 
   fixers = []
+  fixers.append(FixStripFutureImports())
   fixers.append(FixFunctionDef('message', 'Message', ['self', 'op'],
       add_statement='return True', remove=True))
 
@@ -212,18 +253,17 @@ def refactor_expression_script(code, kind, indent=None):
   code = str(rt.refactor_string(code, '<string>'))
   methods = (x for fixer in fixers if isinstance(fixer, FixFunctionDef)
               for x in fixer.results)
-  return (code, '\n\n'.join(str(x).rstrip() for x in methods))
+  return (fixers[0].future_line, code, '\n\n'.join(str(x).rstrip() for x in methods))
 
 
 def refactor_command_script(code, indent=None):
   """
   Refactors Python code that is used as a script in the Cinema 4D Sript
-  Manager. Returns a tuple of two strings -- the first being *code* without
-  the functions that are moved to the member functions and the second being
-  the refactored member functions (indentation unchanged).
+  Manager. The return value is the same as for #refactor_expression_script().
   """
 
   fixers = []
+  fixers.append(FixStripFutureImports())
   fixers.append(FixFunctionDef('main', 'Execute', ['self', 'doc'],
     add_statement='return True', remove=True))
 
@@ -233,14 +273,14 @@ def refactor_command_script(code, indent=None):
   rt = RefactoringTool(fixers)
   code = str(rt.refactor_string(code, '<string>'))
 
-  if not fixers[0].results:
+  if not fixers[1].results:
     lines = ['def Execute(self, doc):']
     for line in code.split('\n'):
       lines.append('  ' + line)
     lines.append('  return True')
-    return (None, '\n'.join(lines))  # Everything is member code
+    return (fixers[0].future_line, None, '\n'.join(lines))  # Everything is member code
   else:
-    return (code, str(fixers[0].results[0]))
+    return (fixers[0].future_line, code, str(fixers[1].results[0]))
 
 
 def refactor_indentation(code, indent):

@@ -474,10 +474,10 @@ class PrototypeConverter(object):
           kind = 'TagData'
           code = self.link[c4d.TPYTHON_CODE]
           plugin_flags = 'c4d.TAG_VISIBLE | c4d.TAG_EXPRESSION'
-        global_code, member_code = codeconv.refactor_expression_script(
-          code, kind, indent='  ')
+        future_import, global_code, member_code = \
+          codeconv.refactor_expression_script(code, kind, indent='  ')
       else:
-        global_code, member_code = None, None
+        future_import, global_code, member_code = None, None, None
 
       if member_code:
         # Indent the code appropriately for the plugin stub.
@@ -492,6 +492,7 @@ class PrototypeConverter(object):
           (symbol_map.descid_to_node[did], params)
           for did, params in symbol_map.hardcoded_description.items()
         ],
+        'future_import': future_import,
         'global_code': global_code,
         'member_code': member_code,
         'plugin_class': re.sub('[^\w\d]+', '', self.plugin_name) + 'Data',
@@ -1126,8 +1127,8 @@ class ScriptConverterDialog(BaseDialog):
     cnv = self.get_converter()
     cnv.autofill()
     with open(cnv.script_file) as fp:
-      global_code, member_code = codeconv.refactor_command_script(
-        fp.read(), indent='  ')
+      future_import, global_code, member_code = \
+        codeconv.refactor_command_script(fp.read(), indent='  ')
     # Indent the code appropriately for the plugin stub.
     member_code = '\n'.join('  ' + l for l in member_code.split('\n'))
     files = cnv.files()
@@ -1136,6 +1137,7 @@ class ScriptConverterDialog(BaseDialog):
       'plugin_id': cnv.plugin_id.strip(),
       'plugin_class': re.sub('[^\w\d]+', '', cnv.plugin_name),
       'plugin_icon': 'res/icons/' + os.path.basename(files['icon']) if files.get('icon') else None,
+      'future_import': future_import,
       'global_code': global_code,
       'member_code': member_code,
     }
