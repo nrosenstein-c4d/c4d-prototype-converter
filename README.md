@@ -3,19 +3,39 @@
 ![](https://img.shields.io/badge/License-MIT-yellow.svg)
 
 This plugin aids you in converting your Cinema 4D Python plugin prototype
-to a plugin.
-
-![](https://i.imgur.com/1b1kzsu.png)
-
-![](https://i.imgur.com/OV08gew.png)
+to a plugin. It uses `lib2to3` to refactor your code.
 
 ### Features
 
-* Converts UserData to Cinema 4D description resource files
-* Generates a Python plugin template file
-* Automatically converts code from Python Generators or Expression Tags
-  to valid code in the plugin template (WIP)
-* A tool to convert Scripts to CommandData plugins (WIP)
+<table>
+  <tr>
+    <th colspan="2" align="left">Prototype to Node Plugin Converter</th>
+  </tr>
+  <tr>
+    <td><img src="https://i.imgur.com/1b1kzsu.png" width="auto"></td>
+    <td>
+
+This tool converts a Cinema 4D Python Generator or Expression Tag to a
+`ObjectData` or `TagData` plugin. It will also convert any User Data on
+the object/tag to a Cinema 4D description resource. The `main()` and
+`message()` functions will be automatically refactored to match the
+`ObjectData.GetVirtualObjects()`/`TagData.Execute()` and `NodeData.Message()`
+methods respectively.
+    </td>
+  </tr>
+  <tr>
+    <th colspan="2" align="left">Script to Command Plugin Converter</th>
+  </tr>
+  <tr>
+    <td><img src="https://i.imgur.com/OV08gew.png" width="auto"></td>
+    <td>
+
+This tool converts a Cinema 4D Python Script to a `CommandData` plugin. The
+script should contain a `main()` function. This function will be automatically
+refactored to match the `CommandData.Execute()` method function.
+    </td>
+  </tr>
+</table>
 
 ### Ideas for the Future
 
