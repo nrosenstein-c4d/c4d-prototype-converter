@@ -241,3 +241,13 @@ def refactor_command_script(code, indent=None):
     return (None, '\n'.join(lines))  # Everything is member code
   else:
     return (code, str(fixers[0].results[0]))
+
+
+def refactor_indentation(code, indent):
+  """
+  Updates the indentation of the specified Python code.
+  """
+
+  fixer = FixIndentation(indent)
+  rt = RefactoringTool([fixer])
+  return str(rt.refactor_string(code, '<string>'))

@@ -29,9 +29,9 @@ import shutil
 import sys
 import webbrowser
 
+from . import codeconv
 from .c4dutils import (unicode_refreplace, get_subcontainer, has_subcontainer,
   DialogOpenerCommand, BaseDialog)
-from .codeconv import refactor_expression_script, refactor_command_script
 from .generics import Generic, HashDict
 from .little_jinja import little_jinja
 from .utils import makedirs, nullable_ref
@@ -474,7 +474,8 @@ class PrototypeConverter(object):
           kind = 'TagData'
           code = self.link[c4d.TPYTHON_CODE]
           plugin_flags = 'c4d.TAG_VISIBLE | c4d.TAG_EXPRESSION'
-        global_code, member_code = refactor_expression_script(code, kind, indent='  ')
+        global_code, member_code = codeconv.refactor_expression_script(
+          code, kind, indent='  ')
       else:
         global_code, member_code = None, None
 
@@ -502,8 +503,13 @@ class PrototypeConverter(object):
         'plugin_icon': 'res/icons/' + os.path.basename(files['icon']) if files.get('icon') else None,
         'symbol_mode': self.symbol_mode,
       }
+      code = little_jinja(template, context)
+      # Write the code for now so you can inspect it should refactoring go wrong.
       with open(files['plugin'], 'w') as fp:
-        fp.write(little_jinja(template, context))
+        fp.write(code)
+      code = codeconv.refactor_indentation(code, self.indent)
+      with open(files['plugin'], 'w') as fp:
+        fp.write(code)
 
     if self.icon_file and self.icon_file != files['icon']:
       makedirs(os.path.dirname(files['icon']))
@@ -1120,7 +1126,8 @@ class ScriptConverterDialog(BaseDialog):
     cnv = self.get_converter()
     cnv.autofill()
     with open(cnv.script_file) as fp:
-      global_code, member_code = refactor_command_script(fp.read(), indent='  ')
+      global_code, member_code = codeconv.refactor_command_script(
+        fp.read(), indent='  ')
     # Indent the code appropriately for the plugin stub.
     member_code = '\n'.join('  ' + l for l in member_code.split('\n'))
     files = cnv.files()
