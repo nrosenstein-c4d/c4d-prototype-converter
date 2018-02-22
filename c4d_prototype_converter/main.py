@@ -232,6 +232,10 @@ def is_maxvalue(x):
     return is_maxvalue(x.x) and is_maxvalue(x.y) and is_maxvalue(x.z)
 
 
+def open_plugin_id_page():
+  webbrowser.open('http://www.plugincafe.com/forum/developer.asp')
+
+
 ID_PLUGIN_CONVERTER = 1040648
 ID_SCRIPT_CONVERTER = 1040671
 COLOR_BLUE = c4d.Vector(0.5, 0.6, 0.9)
@@ -1041,7 +1045,7 @@ class PrototypeConverterDialog(BaseDialog):
       self.Close()
       return True
     elif virtual_id == self.ID_PLUGIN_ID_GET:
-      webbrowser.open('http://www.plugincafe.com/forum/developer.asp')
+      open_plugin_id_page()
       return True
 
     return True
@@ -1270,6 +1274,9 @@ class ScriptConverterDialog(BaseDialog):
       return True
     if virtual_id == self.ID_CANCEL:
       self.Close()
+      return True
+    if virtual_id == self.ID_PLUGIN_ID_GET:
+      open_plugin_id_page()
       return True
     return True
 
