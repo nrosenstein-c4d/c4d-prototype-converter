@@ -30,7 +30,7 @@ import shutil
 import sys
 import webbrowser
 
-from . import codeconv
+from . import codeconv, res
 from .c4dutils import (unicode_refreplace, get_subcontainer, has_subcontainer,
   find_menu_resource, DialogOpenerCommand, BaseDialog)
 from .generics import Generic, HashDict
@@ -362,6 +362,8 @@ class PrototypeConverter(object):
       write_dir = c4d.storage.GeGetC4DPath(c4d.C4D_PATH_STARTUPWRITE)
       dirname = re.sub('[^\w\d]+', '-', self.plugin_name).lower()
       self.directory = os.path.join(write_dir, 'plugins', dirname)
+    if not self.icon_file:
+      self.icon_file = res.path('res/icons/default-icon.tiff')
 
   def files(self):
     f = lambda s: s.format(**sys._getframe(1).f_locals)
@@ -888,6 +890,7 @@ class PrototypeConverterDialog(BaseDialog):
     self.SetString(self.ID_SYMBOL_PREFIX, cnv.symbol_prefix, False, c4d.EDITTEXT_HELPTEXT)
     self.SetString(self.ID_RESOURCE_NAME, cnv.resource_name, False, c4d.EDITTEXT_HELPTEXT)
     self.SetString(self.ID_PLUGIN_NAME, cnv.plugin_name, False, c4d.EDITTEXT_HELPTEXT)
+    self.SetFileSelectorString(self.ID_ICON_FILE, cnv.icon_file, flags=c4d.EDITTEXT_HELPTEXT)
     self.SetFileSelectorString(self.ID_DIRECTORY, cnv.directory, flags=c4d.EDITTEXT_HELPTEXT)
 
   def update_enabling(self):
@@ -1093,17 +1096,19 @@ class ScriptConverter(object):
     if not self.plugin_help:
       metadata = self.get_script_file_metadata(self.script_file)
       self.plugin_help = metadata.get('description')
+    if not self.icon_file:
+      self.icon_file = res.path('res/icons/default-icon.tiff')
 
   def files(self):
     parent_dir = self.directory or self.plugin_name
-    plugin_filename = re.sub('[^\w\d]+', '-', self.plugin_name).lower() + '.pyp'
+    plugin_filename = re.sub('[^\w\d]+', '-', self.plugin_name).lower()
     result = {
       'directory': parent_dir,
-      'plugin': os.path.join(parent_dir, plugin_filename)
+      'plugin': os.path.join(parent_dir, plugin_filename + '.pyp')
     }
     if self.icon_file:
       suffix = os.path.splitext(self.icon_file)[1]
-      result['icon'] = j('res', 'icons', f('{self.plugin_name}{suffix}'))
+      result['icon'] = os.path.join(parent_dir, 'res/icons/{0}{1}'.format(plugin_filename, suffix))
     return result
 
   def create(self):
@@ -1186,6 +1191,7 @@ class ScriptConverterDialog(BaseDialog):
     self.Enable(self.ID_CREATE, enable)
     self.SetString(self.ID_PLUGIN_NAME, cnv.plugin_name, flags=c4d.EDITTEXT_HELPTEXT)
     self.SetFileSelectorString(self.ID_DIRECTORY, cnv.directory, flags=c4d.EDITTEXT_HELPTEXT)
+    self.SetFileSelectorString(self.ID_ICON_FILE, cnv.icon_file, flags=c4d.EDITTEXT_HELPTEXT)
 
     show = (self.GetInt32(self.ID_SCRIPT_COMBOBOX) == 0)
     self.HideElement(self.ID_SCRIPT_FILE_TEXT, not show)

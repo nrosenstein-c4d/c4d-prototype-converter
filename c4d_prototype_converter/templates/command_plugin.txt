@@ -4,6 +4,7 @@
 {{ future_import }}
 {%- endif -%}
 import c4d
+import os
 
 {%- if plugin_icon -%}
 

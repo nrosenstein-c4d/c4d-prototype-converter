@@ -35,9 +35,12 @@ ra9tGjpZvN/wAj+NGJ'
 exec(z.decompress(b.b64decode(blob)), vars(m)); _localimport=m;localimport=getattr(m,"localimport")
 del blob, b, t, z, m;
 
+import os
 
 with localimport('.') as _importer:
-  from c4d_prototype_converter import main
+  from c4d_prototype_converter import main, res
+  res.__res__ = __res__
+  res.plugin_dir = os.path.dirname(__file__)
   PluginMessage = main.PluginMessage
   if __name__ == '__main__':
     main.main()
