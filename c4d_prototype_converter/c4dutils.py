@@ -298,6 +298,24 @@ class BaseDialog(c4d.gui.GeDialog):
     return super(BaseDialog, self).AddEditText(param_id, *args, **kwargs)
 
   # @override
+  def Enable(self, param_id, enable):
+    parent_func = super(BaseDialog, self).Enable
+    for virtual_id in self.ForwardMapId(param_id):
+      parent_func(virtual_id, enable)
+
+  # @override
+  def HideElement(self, param_id, hide):
+    parent_func = super(BaseDialog, self).HideElement
+    for virtual_id in self.ForwardMapId(param_id):
+      parent_func(virtual_id, hide)
+
+  # @override
+  def LayoutChanged(self, param_id):
+    parent_func = super(BaseDialog, self).LayoutChanged
+    for virtual_id in self.ForwardMapId(param_id):
+      parent_func(virtual_id)
+
+  # @override
   def Command(self, param, bc):
     # Invoke virtual widget callbacks.
     event = {'type': 'command', 'param': param, 'bc': bc}
