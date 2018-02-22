@@ -1048,6 +1048,25 @@ class ScriptConverter(object):
   scripts.
   """
 
+  SCRIPT_FILE_METADATA_CACHE = {}
+
+  @classmethod
+  def get_script_file_metadata(cls, filename):
+    if filename in cls.SCRIPT_FILE_METADATA_CACHE:
+      return cls.SCRIPT_FILE_METADATA_CACHE[filename]
+    if not os.path.isfile(filename):
+      return {}
+    with open(filename) as fp:
+      code = fp.read()
+    result = {}
+    for field in re.findall('^(Name-US|Description-US):(.*)$', code, re.M):
+      if field[0] == 'Name-US':
+        result['name'] = field[1].strip()
+      elif field[0] == 'Description-US':
+        result['description'] = field[1].strip()
+    cls.SCRIPT_FILE_METADATA_CACHE[filename] = result
+    return result
+
   def __init__(self, plugin_name, plugin_id, script_file, icon_file, directory, overwrite=True):
     self.plugin_name = plugin_name
     self.plugin_id = plugin_id
@@ -1055,17 +1074,25 @@ class ScriptConverter(object):
     self.icon_file = icon_file
     self.directory = directory
     self.overwrite = overwrite
+    self.plugin_help = None
 
   def autofill(self, default_plugin_name='My Plugin'):
     if not self.plugin_name:
       if self.script_file:
-        self.plugin_name = os.path.splitext(os.path.basename(self.script_file))[0]
+        metadata = self.get_script_file_metadata(self.script_file)
+        if metadata.get('name'):
+          self.plugin_name = metadata['name']
+        else:
+          self.plugin_name = os.path.splitext(os.path.basename(self.script_file))[0]
       else:
         self.plugin_name = default_plugin_name
     if not self.directory:
       write_dir = c4d.storage.GeGetC4DPath(c4d.C4D_PATH_STARTUPWRITE)
       dirname = re.sub('[^\w\d]+', '-', self.plugin_name).lower()
       self.directory = os.path.join(write_dir, 'plugins', dirname)
+    if not self.plugin_help:
+      metadata = self.get_script_file_metadata(self.script_file)
+      self.plugin_help = metadata.get('description')
 
   def files(self):
     parent_dir = self.directory or self.plugin_name
@@ -1078,6 +1105,36 @@ class ScriptConverter(object):
       suffix = os.path.splitext(self.icon_file)[1]
       result['icon'] = j('res', 'icons', f('{self.plugin_name}{suffix}'))
     return result
+
+  def create(self):
+    with open(self.script_file) as fp:
+      future_import, global_code, member_code = \
+        codeconv.refactor_command_script(fp.read(), indent='  ')
+    # Indent the code appropriately for the plugin stub.
+    member_code = '\n'.join('  ' + l for l in member_code.split('\n'))
+    files = self.files()
+    context = {
+      'plugin_name': self.plugin_name,
+      'plugin_id': self.plugin_id.strip(),
+      'plugin_class': re.sub('[^\w\d]+', '', self.plugin_name),
+      'plugin_icon': 'res/icons/' + os.path.basename(files['icon']) if files.get('icon') else None,
+      'future_import': future_import,
+      'global_code': global_code,
+      'member_code': member_code,
+      'plugin_help': self.plugin_help
+    }
+    with open(res_file('templates/command_plugin.txt')) as fp:
+      template = fp.read()
+    if files.get('icon') and files.get('icon') != self.icon_file:
+      makedirs(os.path.dirname(files['icon']))
+      try:
+        shutil.copy(self.icon_file, files['icon'])
+      except shutil.Error as exc:
+        print('Warning: Error copying icon:', exc)
+    print('Creating', files['plugin'])
+    makedirs(os.path.dirname(files['plugin']))
+    with open(files['plugin'], 'w') as fp:
+      fp.write(little_jinja(template, context))
 
 
 class ScriptConverterDialog(BaseDialog):
@@ -1147,34 +1204,12 @@ class ScriptConverterDialog(BaseDialog):
   def do_create(self):
     cnv = self.get_converter()
     cnv.autofill()
-    with open(cnv.script_file) as fp:
-      future_import, global_code, member_code = \
-        codeconv.refactor_command_script(fp.read(), indent='  ')
-    # Indent the code appropriately for the plugin stub.
-    member_code = '\n'.join('  ' + l for l in member_code.split('\n'))
-    files = cnv.files()
-    context = {
-      'plugin_name': cnv.plugin_name,
-      'plugin_id': cnv.plugin_id.strip(),
-      'plugin_class': re.sub('[^\w\d]+', '', cnv.plugin_name),
-      'plugin_icon': 'res/icons/' + os.path.basename(files['icon']) if files.get('icon') else None,
-      'future_import': future_import,
-      'global_code': global_code,
-      'member_code': member_code,
-    }
-    with open(res_file('templates/command_plugin.txt')) as fp:
-      template = fp.read()
-    if files.get('icon') and files.get('icon') != cnv.icon_file:
-      makedirs(os.path.dirname(files['icon']))
-      try:
-        shutil.copy(cnv.icon_file, files['icon'])
-      except shutil.Error as exc:
-        print('Warning: Error copying icon:', exc)
-    print('Creating', files['plugin'])
-    makedirs(os.path.dirname(files['plugin']))
-    with open(files['plugin'], 'w') as fp:
-      fp.write(little_jinja(template, context))
-    c4d.storage.ShowInFinder(files['directory'])
+    try:
+      cnv.create()
+    except IOError as exc:
+      c4d.gui.MessageDialog(str(exc))
+    else:
+      c4d.storage.ShowInFinder(cnv.files()['directory'])
 
   def CreateLayout(self):
     self.script_filenames = self.get_library_scripts()

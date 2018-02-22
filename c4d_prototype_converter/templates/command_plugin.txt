@@ -30,7 +30,7 @@ class {{ plugin_class }}(c4d.plugins.CommandData):
   PLUGIN_NAME = {{ repr(plugin_name) }}
   PLUGIN_INFO = 0
   PLUGIN_ICON = {{ 'load_bitmap({!r})'.format(plugin_icon) if plugin_icon else 'None' }}
-  PLUGIN_HELP = ""
+  PLUGIN_HELP = {{ repr(plugin_help) if plugin_help else "" }}
 
   def Register(self):
     return c4d.plugins.RegisterCommandPlugin(

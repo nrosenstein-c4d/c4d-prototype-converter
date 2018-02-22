@@ -201,7 +201,7 @@ class FixStripFutureImports(DelayBindBaseFix):
     if self.imports:
       return 'from __future__ import {}'.format(', '.join(self.imports))
     else:
-      return None
+      return ''
 
   def transform(self, node, results):
     passed_import = False
