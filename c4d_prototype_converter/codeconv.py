@@ -120,6 +120,7 @@ class FixIndentation(DelayBindBaseFix):
 
   def __init__(self, new_indent):
     self.indents = []
+    self.compounds = []
     self.line = 0
     self.new_indent = new_indent
 
@@ -158,7 +159,13 @@ class FixIndentation(DelayBindBaseFix):
             node.prefix = new_prefix
             # Return the modified node:
             return node
-    elif self.line != node.lineno:  # New line
+    elif node.type in (token.LPAR, token.LBRACE, token.LSQB): # (, {, [
+      self.compounds.append(node.type)
+    elif node.type in (token.RPAR, token.RBRACE, token.RSQB): # ), }, ]
+      m = {token.RPAR: token.LPAR, token.RBRACE: token.LBRACE, token.RSQB: token.LSQB}
+      assert self.compounds[-1] == m[node.type], (self.compounds[-1], node.type)
+      self.compounds.pop()
+    if self.line != node.lineno:  # New line
       self.line = node.lineno
       if not self.indents:
         return None  # First line, do nothing
@@ -169,7 +176,8 @@ class FixIndentation(DelayBindBaseFix):
         # the old indentation and add the correct
         # indententation as a new last line.
         prefix_lines = node.prefix.split('\n')[:-1]
-        prefix_lines.append(self.new_indent * len(self.indents))
+        indent_depth = len(self.indents) + len(self.compounds)
+        prefix_lines.append(self.new_indent * indent_depth)
         new_prefix = '\n'.join(prefix_lines)
         if node.prefix != new_prefix:
           node.prefix = new_prefix
