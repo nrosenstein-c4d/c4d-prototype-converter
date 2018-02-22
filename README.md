@@ -8,7 +8,6 @@ to a plugin.
 <table>
   <tr>
     <th colspan="2" align="left">Script Converter</th>
-    <th></th>
   </tr>
   <tr>
     <td><img src="https://i.imgur.com/OV08gew.png" width="auto"></td>
