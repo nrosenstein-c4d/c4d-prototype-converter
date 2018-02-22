@@ -477,14 +477,14 @@ class PrototypeConverter(object):
           kind = 'TagData'
           code = self.link[c4d.TPYTHON_CODE]
           plugin_flags = 'c4d.TAG_VISIBLE | c4d.TAG_EXPRESSION'
-        future_import, global_code, member_code = \
-          codeconv.refactor_expression_script(code, kind, indent='  ')
+        code_parts = codeconv.refactor_expression_script(code, kind, indent='  ')
       else:
-        future_import, global_code, member_code = None, None, None
+        code_parts = {}
 
-      if member_code:
+      if code_parts.get('member_code'):
         # Indent the code appropriately for the plugin stub.
-        member_code = '\n'.join('  ' + l for l in member_code.split('\n'))
+        code_parts['member_code'] = '\n'.join('  ' + l
+          for l in code_parts['member_code'].split('\n'))
 
       context = {
         'c4d': c4d,
@@ -495,9 +495,10 @@ class PrototypeConverter(object):
           (symbol_map.descid_to_node[did], params)
           for did, params in symbol_map.hardcoded_description.items()
         ],
-        'future_import': future_import,
-        'global_code': global_code,
-        'member_code': member_code,
+        'docstrings': code_parts.get('docstrings'),
+        'future_import': code_parts.get('future_imports'),
+        'global_code': code_parts.get('code'),
+        'member_code': code_parts.get('member_code'),
         'plugin_class': re.sub('[^\w\d]+', '', self.plugin_name) + 'Data',
         'plugin_type': plugin_type_info['plugintype'],
         'plugin_id': self.plugin_id,
@@ -1113,20 +1114,20 @@ class ScriptConverter(object):
 
   def create(self):
     with open(self.script_file) as fp:
-      future_import, global_code, member_code = \
-        codeconv.refactor_command_script(fp.read(), indent='  ')
+      code_parts = codeconv.refactor_command_script(fp.read(), indent='  ')
     # Indent the code appropriately for the plugin stub.
-    member_code = '\n'.join('  ' + l for l in member_code.split('\n'))
+    member_code = '\n'.join('  ' + l for l in code_parts['member_code'].split('\n'))
     files = self.files()
     context = {
       'plugin_name': self.plugin_name,
       'plugin_id': self.plugin_id.strip(),
       'plugin_class': re.sub('[^\w\d]+', '', self.plugin_name),
       'plugin_icon': 'res/icons/' + os.path.basename(files['icon']) if files.get('icon') else None,
-      'future_import': future_import,
-      'global_code': global_code,
+      'future_import': code_parts['future_imports'],
+      'global_code': code_parts['code'],
       'member_code': member_code,
-      'plugin_help': self.plugin_help
+      'plugin_help': self.plugin_help,
+      'docstrings': code_parts['docstrings']
     }
     with open(res_file('templates/command_plugin.txt')) as fp:
       template = fp.read()

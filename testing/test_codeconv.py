@@ -2,9 +2,16 @@
 A simple script to test the behaviour of our refactoring suite.
 """
 
+from __future__ import print_function
 from c4d_prototype_converter import codeconv
 
 script = '''
+# Copyright text here
+"""
+Name-US: Test Thing
+Description-US: A description.
+"""
+
 from __future__ import print_function, division
 import c4d
 
@@ -22,9 +29,11 @@ def main():
   return c4d.BaseObject(c4d.Ocube)
 '''
 
-future_import, global_code, methods = codeconv.refactor_expression_script(
+results = codeconv.refactor_expression_script(
   script, 'ObjectData', indent='    ')
 
-print(future_import)
-print(global_code)
-print(methods)
+for k, v in results.iteritems():
+  print(k)
+  print('=' * len(k))
+  print(v)
+  print()

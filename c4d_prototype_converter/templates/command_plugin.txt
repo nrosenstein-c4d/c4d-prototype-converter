@@ -1,4 +1,7 @@
 # Copyright (c) <year> <author>
+{%- if docstrings -%}
+{{ docstrings }}
+{%- endif -%}
 
 {%- if future_import -%}
 {{ future_import }}
@@ -18,10 +21,7 @@ def load_bitmap(path):
 {%- endif -%}
 {%- if global_code -%}
 
-# ============================================================================
-# This code was automatically copied from the Python Object/Tag.
 {{ global_code }}
-# ============================================================================
 
 {%- endif -%}
 
@@ -39,10 +39,7 @@ class {{ plugin_class }}(c4d.plugins.CommandData):
       self.PLUGIN_HELP, self)
 
   {%- if member_code -%}
-  # ==========================================================================
-  # This code was automatically transfered from the Python Object/Tag.
 {{ member_code }}
-  # ==========================================================================
   {%- else -%}
   def Execute(self, doc):
     c4d.gui.MessageDialog('Hello, World!')

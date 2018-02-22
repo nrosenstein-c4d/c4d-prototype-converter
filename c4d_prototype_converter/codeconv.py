@@ -225,6 +225,26 @@ class FixStripFutureImports(DelayBindBaseFix):
     return new
 
 
+class FixStripDocstrings(DelayBindBaseFix):
+  """
+  Strips module docstrings.
+  """
+
+  def __init__(self):
+    self.docstrings = None
+
+  def match(self, node):
+    return True
+
+  def transform(self, node, results):
+    if isinstance(node, Node) and node.type == python_symbols.file_input:
+      for child in node.children:
+        if child.type == python_symbols.simple_stmt:
+          if child.children and child.children[0].type == token.STRING:
+            self.docstrings = child.children[0].value
+            child.replace(BlankLine())
+
+
 def strip_empty_lines(string):
   lines = []
   for line in string.split('\n'):
@@ -252,6 +272,7 @@ def refactor_expression_script(code, kind, indent=None):
 
   fixers = []
   fixers.append(FixStripFutureImports())
+  fixers.append(FixStripDocstrings())
   fixers.append(FixFunctionDef('message', 'Message', ['self', 'op'],
       add_statement='return True', remove=True))
 
@@ -273,7 +294,13 @@ def refactor_expression_script(code, kind, indent=None):
               for x in fixer.results)
   methods = '\n\n'.join(strip_empty_lines(str(x)) for x in methods)
 
-  return map(strip_empty_lines, (fixers[0].future_line, code, methods))
+  result = {
+    'future_imports': fixers[0].future_line,
+    'docstrings': fixers[1].docstrings or '',
+    'code': code,
+    'member_code': methods
+  }
+  return {k: strip_empty_lines(v) for k, v in result.iteritems()}
 
 
 def refactor_command_script(code, indent=None):
@@ -284,6 +311,7 @@ def refactor_command_script(code, indent=None):
 
   fixers = []
   fixers.append(FixStripFutureImports())
+  fixers.append(FixStripDocstrings())
   fixers.append(FixFunctionDef('main', 'Execute', ['self', 'doc'],
     add_statement='return True', remove=True))
 
@@ -293,16 +321,21 @@ def refactor_command_script(code, indent=None):
   rt = RefactoringTool(fixers)
   code = str(rt.refactor_string(code, '<string>'))
 
-  if not fixers[1].results:
+  result = {}
+  result['future_imports'] = fixers[0].future_line
+  result['docstrings'] = fixers[1].docstrings or ''
+  if not fixers[2].results:
     lines = ['def Execute(self, doc):']
     for line in code.split('\n'):
       lines.append('  ' + line)
     lines.append('  return True')
-    result = (fixers[0].future_line, '', '\n'.join(lines))  # Everything is member code
+    result['code'] = ''
+    result['member_code'] = '\n'.join(lines)
   else:
-    result = (fixers[0].future_line, code, str(fixers[1].results[0]))
+    result['code'] = code
+    result['member_code'] = str(fixers[1].results[0])
 
-  return map(strip_empty_lines, result)
+  return {k: strip_empty_lines(v) for k, v in result.iteritems()}
 
 
 def refactor_indentation(code, indent):

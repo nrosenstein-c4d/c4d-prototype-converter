@@ -1,4 +1,7 @@
 # Copyright (C) <year> <author>
+{%- if docstrings -%}
+{{ docstrings }}
+{%- endif -%}
 
 {%- if future_import -%}
 {{ future_import }}
@@ -6,8 +9,8 @@
 import c4d
 import os
 
-
 {%- if symbol_mode == 'c4d' -%}
+
 #
 # Note: It is NOT recommended to use the Cinema 4D module to access your
 # plugin's resource symbols. The C4DDev project contains tools that can
@@ -18,6 +21,7 @@ import os
 res = c4d
 
 {%- elif symbol_mode == 'c4ddev' -%}
+
 #
 # Note: Check out the C4DDev project which contains tools that can parse
 # resource files and generate Python code with all the symbols, similar to
@@ -32,6 +36,7 @@ res = res()
 
 {%- endif -%}
 {%- if plugin_icon -%}
+
 def load_bitmap(path):
   path = os.path.join(os.path.dirname(__file__), path)
   bmp = c4d.bitmaps.BaseBitmap()
@@ -41,10 +46,8 @@ def load_bitmap(path):
 
 {%- endif -%}
 {%- if global_code -%}
-# ============================================================================
-# This code was automatically copied from the Python Object/Tag.
+
 {{ global_code }}
-# ============================================================================
 
 {%- endif -%}
 
@@ -121,10 +124,7 @@ class {{ plugin_class }}(c4d.plugins.{{ plugin_type }}Data):
 
   {%- endif -%}
   {%- if member_code -%}
-  # ==========================================================================
-  # This code was automatically transfered from the Python Object/Tag.
 {{ member_code }}
-  # ==========================================================================
   {%- endif -%}
 
 if __name__ == '__main__':
