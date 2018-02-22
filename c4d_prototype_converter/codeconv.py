@@ -217,6 +217,16 @@ class FixStripFutureImports(DelayBindBaseFix):
     return new
 
 
+def strip_empty_lines(string):
+  lines = []
+  for line in string.split('\n'):
+    if not lines and (not line or line.isspace()): continue
+    lines.append(line)
+  while lines and (not lines[-1] or lines[-1].isspace()):
+    lines.pop()
+  return '\n'.join(lines)
+
+
 def refactor_expression_script(code, kind, indent=None):
   """
   Refactors Python code that is used in Python Generator or Expression Tag.
@@ -253,7 +263,9 @@ def refactor_expression_script(code, kind, indent=None):
   code = str(rt.refactor_string(code, '<string>'))
   methods = (x for fixer in fixers if isinstance(fixer, FixFunctionDef)
               for x in fixer.results)
-  return (fixers[0].future_line, code, '\n\n'.join(str(x).rstrip() for x in methods))
+  methods = '\n\n'.join(strip_empty_lines(str(x)) for x in methods)
+
+  return map(strip_empty_lines, (fixers[0].future_line, code, methods))
 
 
 def refactor_command_script(code, indent=None):
@@ -278,9 +290,11 @@ def refactor_command_script(code, indent=None):
     for line in code.split('\n'):
       lines.append('  ' + line)
     lines.append('  return True')
-    return (fixers[0].future_line, None, '\n'.join(lines))  # Everything is member code
+    result = (fixers[0].future_line, '', '\n'.join(lines))  # Everything is member code
   else:
-    return (fixers[0].future_line, code, str(fixers[1].results[0]))
+    result = (fixers[0].future_line, code, str(fixers[1].results[0]))
+
+  return map(strip_empty_lines, result)
 
 
 def refactor_indentation(code, indent):
