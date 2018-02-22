@@ -89,4 +89,4 @@ created for [Cineversity.com](https://www.cineversity.com/)'s
 
 ---
 
-<p align="center">Copyright &copy 2018 [Niklas Rosenstein](https://www.niklasrosenstein.com/)</p>
+<p align="center">Copyright &copy 2018 Niklas Rosenstein</p>
