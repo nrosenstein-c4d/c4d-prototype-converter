@@ -333,7 +333,7 @@ def refactor_command_script(code, indent=None):
     result['member_code'] = '\n'.join(lines)
   else:
     result['code'] = code
-    result['member_code'] = str(fixers[1].results[0])
+    result['member_code'] = str(fixers[2].results[0])
 
   return {k: strip_empty_lines(v) for k, v in result.iteritems()}
 
