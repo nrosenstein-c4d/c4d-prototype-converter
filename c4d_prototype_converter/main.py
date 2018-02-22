@@ -23,6 +23,7 @@
 from __future__ import division, print_function
 import c4d
 import collections
+import glob
 import os
 import re
 import shutil
@@ -1095,12 +1096,18 @@ class ScriptConverterDialog(BaseDialog):
   ID_CANCEL = 1007
   ID_PLUGIN_ID_TEXT = 1008
   ID_SCRIPT_FILE_TEXT = 1009
+  ID_SCRIPT_COMBOBOX = 1010
+  ID_GROUP_MAIN = 1011
 
   def get_converter(self):
+    if self.GetInt32(self.ID_SCRIPT_COMBOBOX) == 0:
+      script_file = self.GetFileSelectorString(self.ID_SCRIPT_FILE)
+    else:
+      script_file = self.script_filenames[self.GetInt32(self.ID_SCRIPT_COMBOBOX) - 1]
     return ScriptConverter(
       plugin_name = self.GetString(self.ID_PLUGIN_NAME),
       plugin_id = self.GetString(self.ID_PLUGIN_ID),
-      script_file = self.GetFileSelectorString(self.ID_SCRIPT_FILE),
+      script_file = script_file,
       icon_file = self.GetFileSelectorString(self.ID_ICON_FILE),
       directory = self.GetFileSelectorString(self.ID_DIRECTORY),
       overwrite = True
@@ -1122,6 +1129,20 @@ class ScriptConverterDialog(BaseDialog):
     self.Enable(self.ID_CREATE, enable)
     self.SetString(self.ID_PLUGIN_NAME, cnv.plugin_name, flags=c4d.EDITTEXT_HELPTEXT)
     self.SetFileSelectorString(self.ID_DIRECTORY, cnv.directory, flags=c4d.EDITTEXT_HELPTEXT)
+
+    show = (self.GetInt32(self.ID_SCRIPT_COMBOBOX) == 0)
+    self.HideElement(self.ID_SCRIPT_FILE_TEXT, not show)
+    self.HideElement(self.ID_SCRIPT_FILE, not show)
+    self.LayoutChanged(self.ID_GROUP_MAIN)
+
+  @staticmethod
+  def get_library_scripts():
+    dirs = [os.path.join(c4d.storage.GeGetC4DPath(x), 'scripts')
+      for x in [c4d.C4D_PATH_LIBRARY, c4d.C4D_PATH_LIBRARY_USER]]
+    result = []
+    for dirname in dirs:
+      result += glob.glob(os.path.join(dirname, '*.py'))
+    return result
 
   def do_create(self):
     cnv = self.get_converter()
@@ -1156,9 +1177,10 @@ class ScriptConverterDialog(BaseDialog):
     c4d.storage.ShowInFinder(files['directory'])
 
   def CreateLayout(self):
+    self.script_filenames = self.get_library_scripts()
     self.SetTitle('Script to Command Plugin Converter')
     self.GroupBorderSpace(6, 6, 6, 6)
-    self.GroupBegin(0, c4d.BFH_SCALEFIT, 1, 0)  # MAIN {
+    self.GroupBegin(self.ID_GROUP_MAIN, c4d.BFH_SCALEFIT, 1, 0)  # MAIN {
 
     self.GroupBegin(0, c4d.BFH_SCALEFIT, 2, 0)  # MAIN/PARAMS {
     #self.GroupBorderSpace(6, 6, 6, 6)
@@ -1169,7 +1191,13 @@ class ScriptConverterDialog(BaseDialog):
     self.AddEditText(self.ID_PLUGIN_ID, c4d.BFH_LEFT, 100)
     self.AddButton(self.ID_PLUGIN_ID_GET, c4d.BFH_LEFT, name='Get Plugin ID')
     self.GroupEnd()
-    self.AddStaticText(self.ID_SCRIPT_FILE_TEXT, c4d.BFH_LEFT, name='Script *')
+    self.AddStaticText(0, c4d.BFH_LEFT, name='Script')
+    self.AddComboBox(self.ID_SCRIPT_COMBOBOX, c4d.BFH_SCALEFIT)
+    self.AddChild(self.ID_SCRIPT_COMBOBOX, 0, 'Select File...')
+    self.AddChild(self.ID_SCRIPT_COMBOBOX, -1, '')
+    for i, fn in enumerate(self.script_filenames, 1):
+      self.AddChild(self.ID_SCRIPT_COMBOBOX, i, os.path.basename(fn))
+    self.AddStaticText(self.ID_SCRIPT_FILE_TEXT, c4d.BFH_LEFT, name='Filename *')
     self.AddFileSelector(self.ID_SCRIPT_FILE, c4d.BFH_SCALEFIT, type='load')
     self.AddStaticText(0, c4d.BFH_LEFT, name='Icon')
     self.AddFileSelector(self.ID_ICON_FILE, c4d.BFH_SCALEFIT, type='load')
