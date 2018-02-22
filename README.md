@@ -80,8 +80,13 @@ This tool converts a Cinema 4D Python Generator or Expression Tag to a
 
 ### Acknowledgements
 
-This project is sponsored by Maxon US.
+This project is sponsored by [Maxon US](https://www.maxon.net/en-us/) and was
+created for [Cineversity.com](https://www.cineversity.com/)'s
+[CV-Toolbox](https://www.cineversity.com/vidplaytut/cv_toolbox).
+
+- Programming and Design: [Niklas Rosenstein](https://www.niklasrosenstein.com/)
+- Initial Concept and Design: [Donovan Keith](https://www.donovankeith.com)
 
 ---
 
-<p align="center">Copyright &copy 2018 Niklas Rosenstein</p>
+<p align="center">Copyright &copy 2018 [Niklas Rosenstein](https://www.niklasrosenstein.com/)</p>
