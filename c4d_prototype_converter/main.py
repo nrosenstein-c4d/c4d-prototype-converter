@@ -1171,7 +1171,7 @@ class ScriptConverterDialog(BaseDialog):
     if self.GetInt32(self.ID_SCRIPT_COMBOBOX) == 0:
       script_file = self.GetFileSelectorString(self.ID_SCRIPT_FILE)
     else:
-      script_file = self.script_filenames[self.GetInt32(self.ID_SCRIPT_COMBOBOX) - 1]
+      script_file = self.script_filenames[self.GetInt32(self.ID_SCRIPT_COMBOBOX) - 1][0]
     return ScriptConverter(
       plugin_name = self.GetString(self.ID_PLUGIN_NAME),
       plugin_id = self.GetString(self.ID_PLUGIN_ID),
@@ -1209,8 +1209,22 @@ class ScriptConverterDialog(BaseDialog):
     dirs = [os.path.join(c4d.storage.GeGetC4DPath(x), 'scripts')
       for x in [c4d.C4D_PATH_LIBRARY, c4d.C4D_PATH_LIBRARY_USER]]
     result = []
+    def recurse(directory, depth=0):
+      if not os.path.isdir(directory): return
+      directory_index = len(result)
+      for name in os.listdir(directory):
+        path = os.path.join(directory, name)
+        if name.endswith('.py'):
+          name = '    ' * depth + name + '&i{}&'.format(c4d.RESOURCEIMAGE_PYTHONSCRIPT)
+          result.append((path, name, True))
+        elif os.path.isdir(path):
+          recurse(path, depth+1)
+      if len(result) != directory_index and depth > 0:
+        name = '    ' * (depth-1) + os.path.basename(directory) + '/'
+        name += '&i' + str(c4d.RESOURCEIMAGE_TIMELINE_FOLDER2)
+        result.insert(directory_index, (directory, name, False))
     for dirname in dirs:
-      result += glob.glob(os.path.join(dirname, '*.py'))
+      recurse(dirname)
     return result
 
   def do_create(self):
@@ -1242,8 +1256,8 @@ class ScriptConverterDialog(BaseDialog):
     self.AddComboBox(self.ID_SCRIPT_COMBOBOX, c4d.BFH_SCALEFIT)
     self.AddChild(self.ID_SCRIPT_COMBOBOX, 0, 'Select File...')
     self.AddChild(self.ID_SCRIPT_COMBOBOX, -1, '')
-    for i, fn in enumerate(self.script_filenames, 1):
-      self.AddChild(self.ID_SCRIPT_COMBOBOX, i, os.path.basename(fn))
+    for i, (fn, name, _) in enumerate(self.script_filenames, 1):
+      self.AddChild(self.ID_SCRIPT_COMBOBOX, i, name)
     self.AddStaticText(self.ID_SCRIPT_FILE_TEXT, c4d.BFH_LEFT, name='Filename *')
     self.AddFileSelector(self.ID_SCRIPT_FILE, c4d.BFH_SCALEFIT, type='load')
     self.AddStaticText(0, c4d.BFH_LEFT, name='Icon')
@@ -1267,8 +1281,15 @@ class ScriptConverterDialog(BaseDialog):
   def Command(self, param_id, bc):
     if super(ScriptConverterDialog, self).Command(param_id, bc):
       return True
-    self.update_enabling()
+
     virtual_id = self.ReverseMapId(param_id)[1]
+    if virtual_id == self.ID_SCRIPT_COMBOBOX:
+      value = self.GetInt32(virtual_id)
+      if virtual_id != 0 and not self.script_filenames[value-1][2]:  # not a file
+        self.SetInt32(virtual_id, value+1)
+
+    self.update_enabling()
+
     if virtual_id == self.ID_CREATE:
       self.do_create()
       return True
