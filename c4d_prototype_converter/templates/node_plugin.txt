@@ -74,6 +74,11 @@ class {{ plugin_class }}(c4d.plugins.{{ plugin_type }}Data):
       cls.PLUGIN_DISKLEVEL)
       {%- endif -%}
 
+  {%- if plugin_type == 'Object' and link[c4d.OPYTHON_OPTIMIZE] -%}
+  def __init__(self):
+    self.SetOptimizeCache(True)
+
+  {%- endif -%}
   def Init(self, node):
     {%- for node, did, bc in parameters -%}
     {%- if did[-1].dtype == c4d.DTYPE_BOOL -%}

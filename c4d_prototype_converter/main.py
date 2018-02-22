@@ -488,6 +488,7 @@ class PrototypeConverter(object):
 
       context = {
         'c4d': c4d,
+        'link': self.link,
         'parameters': [
           (symbol_map.descid_to_node[did], did, bc)
           for did, bc in ud if did in symbol_map.descid_to_node],
