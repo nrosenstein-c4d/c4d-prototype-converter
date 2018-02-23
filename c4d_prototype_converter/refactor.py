@@ -51,6 +51,12 @@ class RefactoringTool(refactor.RefactoringTool):
     return (pre_order_fixers, post_order_fixers)
 
 
+def refactor_string(fixers, code, filename='<string>'):
+  rt = RefactoringTool(fixers)
+  code = code.rstrip() + '\n'  # ParseError without trailing newline
+  return rt.refactor_string(code, filename)
+
+
 class DelayBindBaseFix(BaseFix):
 
   def __init__(self):
@@ -67,6 +73,8 @@ class FixFunctionDef(DelayBindBaseFix):
   Used to adapt a function definition by changing its name and parameter
   list. Additionally, *remove* can be set to #True in order to remove any
   matching occurences and store them in the #results list instead.
+
+  This fixer only matches global function defs.
   """
 
   PATTERN = "funcdef< 'def' name='{}' any* >"
@@ -84,6 +92,14 @@ class FixFunctionDef(DelayBindBaseFix):
     self.results = []
 
   def transform(self, node, results):
+    # Determine the node's column number by finding the first leaf.
+    leaf = node
+    while not isinstance(leaf, Leaf):
+      leaf = leaf.children[0]
+    # Only match functions and the global indentation level.
+    if leaf.column != 0:
+      return
+
     indent = None
     for child in node.children:
       if isinstance(child, Node) and child.type == python_symbols.suite:
@@ -201,7 +217,7 @@ class FixStripFutureImports(DelayBindBaseFix):
     if self.imports:
       return 'from __future__ import {}'.format(', '.join(self.imports))
     else:
-      return ''
+      return None
 
   def transform(self, node, results):
     passed_import = False
@@ -231,7 +247,7 @@ class FixStripDocstrings(DelayBindBaseFix):
   """
 
   def __init__(self):
-    self.docstrings = None
+    self.docstring = None
 
   def match(self, node):
     return True
@@ -241,7 +257,7 @@ class FixStripDocstrings(DelayBindBaseFix):
       for child in node.children:
         if child.type == python_symbols.simple_stmt:
           if child.children and child.children[0].type == token.STRING:
-            self.docstrings = child.children[0].value
+            self.docstring = child.children[0].value
             child.replace(BlankLine())
 
 
@@ -255,94 +271,25 @@ def strip_empty_lines(string):
   return '\n'.join(lines)
 
 
-def refactor_expression_script(code, kind, indent=None):
-  """
-  Refactors Python code that is used in Python Generator or Expression Tag.
-  Returns a tuple of three values strings:
-
-  1. A string that represents imports from the `__future__` module
-  2. The code without functions that are moved to member functions
-  3. The refactored member functions (indentation unchanged)
-
-  If *indent* is specified, it must be a string that represents a single
-  indentation level. The indent of the code will be adjusted accordingly.
-
-  The *kind* must be either the string `'ObjectData'` or `'TagData'`.
-  """
-
-  fixers = []
-  fixers.append(FixStripFutureImports())
-  fixers.append(FixStripDocstrings())
-  fixers.append(FixFunctionDef('message', 'Message', ['self', 'op'],
-      add_statement='return True', remove=True))
-
-  if kind == 'ObjectData':
-    fixers.append(FixFunctionDef('main', 'GetVirtualObjects',
-      ['self', 'op', 'hh'], remove=True))
-  elif kind == 'TagData':
-    fixers.append(FixFunctionDef('main', 'Execute',
-      ['self', 'op', 'doc', 'host', 'bt', 'priority', 'flags'], remove=True))
-  else:
-    raise ValueError(kind)
-
-  if indent:
-    fixers.append(FixIndentation(indent))
-
-  rt = RefactoringTool(fixers)
-  code = str(rt.refactor_string(code, '<string>'))
-  methods = (x for fixer in fixers if isinstance(fixer, FixFunctionDef)
-              for x in fixer.results)
-  methods = '\n\n'.join(strip_empty_lines(str(x)) for x in methods)
-
-  result = {
-    'future_imports': fixers[0].future_line,
-    'docstrings': fixers[1].docstrings or '',
-    'code': code,
-    'member_code': methods
-  }
-  return {k: strip_empty_lines(v) for k, v in result.iteritems()}
+def split_docstring(code):
+  fixer = FixStripDocstrings()
+  return str(refactor_string([fixer], code)), strip_empty_lines(fixer.docstring or '')
 
 
-def refactor_command_script(code, indent=None):
-  """
-  Refactors Python code that is used as a script in the Cinema 4D Sript
-  Manager. The return value is the same as for #refactor_expression_script().
-  """
-
-  fixers = []
-  fixers.append(FixStripFutureImports())
-  fixers.append(FixStripDocstrings())
-  fixers.append(FixFunctionDef('main', 'Execute', ['self', 'doc'],
-    add_statement='return True', remove=True))
-
-  if indent:
-    fixers.append(FixIndentation(indent))
-
-  rt = RefactoringTool(fixers)
-  code = str(rt.refactor_string(code, '<string>'))
-
-  result = {}
-  result['future_imports'] = fixers[0].future_line
-  result['docstrings'] = fixers[1].docstrings or ''
-  if not fixers[2].results:
-    lines = ['def Execute(self, doc):']
-    for line in code.split('\n'):
-      lines.append('  ' + line)
-    lines.append('  return True')
-    result['code'] = ''
-    result['member_code'] = '\n'.join(lines)
-  else:
-    result['code'] = code
-    result['member_code'] = str(fixers[2].results[0])
-
-  return {k: strip_empty_lines(v) for k, v in result.iteritems()}
+def split_future_imports(code):
+  fixer = FixStripFutureImports()
+  return str(refactor_string([fixer], code)), strip_empty_lines(fixer.future_line or '')
 
 
-def refactor_indentation(code, indent):
-  """
-  Updates the indentation of the specified Python code.
-  """
+def split_and_refactor_global_function(code, func_name, new_func_name=None,
+    prepend_args=None, append_args=None, add_statement=None):
+  fixer = FixFunctionDef(func_name, new_func_name, prepend_args, append_args,
+    True, add_statement)
+  code = str(refactor_string([fixer], code))
+  functions = '\n'.join(strip_empty_lines(str(x)) for x in fixer.results)
+  return strip_empty_lines(code), functions
 
+
+def indentation(code, indent):
   fixer = FixIndentation(indent)
-  rt = RefactoringTool([fixer])
-  return str(rt.refactor_string(code, '<string>'))
+  return str(refactor_string([fixer], code))

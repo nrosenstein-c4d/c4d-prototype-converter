@@ -30,7 +30,7 @@ import shutil
 import sys
 import webbrowser
 
-from . import codeconv, res
+from . import refactor, res
 from .c4dutils import (unicode_refreplace, get_subcontainer, has_subcontainer,
   find_menu_resource, DialogOpenerCommand, BaseDialog)
 from .generics import Generic, HashDict
@@ -234,6 +234,84 @@ def is_maxvalue(x):
 
 def open_plugin_id_page():
   webbrowser.open('http://www.plugincafe.com/forum/developer.asp')
+
+
+def refactor_expression_script(code, kind):
+  member_code = ''
+  code = refactor.indentation(code, '  ')  # To match the indentation of the plugin stub.
+  print('='*80)
+  print(code)
+  code, docstring = refactor.split_docstring(code)
+  print('='*80)
+  print(code)
+  code, msg_code = refactor.split_and_refactor_global_function(
+    code, 'message', 'Message', ['self', 'op'], add_statement='return True')
+  member_code += msg_code
+  print('='*80)
+  print(code)
+  if kind == 'ObjectData':
+    code, gvo_code = refactor.split_and_refactor_global_function(
+      code, 'main', 'GetVirtualObjects', ['self', 'op', 'hh'])
+    member_code += '\n\n' + gvo_code
+  elif kind == 'TagData':
+    code, exec_code = refactor.split_and_refactor_global_function(
+      code, 'main', 'Execute', ['self', 'op', 'doc', 'host', 'bt', 'priority', 'flags'],
+      add_statement='return c4d.EXECUTIONRESULT_OK')
+    member_code += '\n\n' + exec_code
+  else:
+    raise ValueError(kind)
+
+  print('='*80)
+  print(code)
+  code, future_line = refactor.split_future_imports(code)
+  print('='*80)
+  print(code)
+  print('='*80)
+
+  print('MEMBER CODE')
+  print(member_code)
+  print('='*80)
+
+  return {
+    'future_line': future_line,
+    'docstring': docstring,
+    'code': code,
+    'member_code': member_code
+  }
+
+
+def refactor_command_script(code):
+  code = refactor.indentation(code, '  ')  # To match the indentation of the plugin stub.
+  print('='*80)
+  print(code)
+  code, docstring = refactor.split_docstring(code)
+  print('='*80)
+  print(code)
+  code, exec_func = refactor.split_and_refactor_global_function(
+    code, 'main', 'Execute', ['self', 'doc'], add_statement='return True')
+  print('='*80)
+  print(code)
+  code, future_line = refactor.split_future_imports(code)
+  print('='*80)
+  print(code)
+  print('='*80)
+
+  if exec_func:
+    member_code = exec_func
+  else:
+    lines = ['def Execute(self, doc):']
+    for line in code.split('\n'):
+      lines.append('  ' + line)
+    lines.append('  return True')
+    member_code = '\n'.join(lines)
+    code = ''
+
+  return {
+    'future_line': future_line,
+    'docstring': docstring,
+    'code': code,
+    'member_code': member_code
+  }
 
 
 ID_PLUGIN_CONVERTER = 1040648
@@ -481,7 +559,7 @@ class PrototypeConverter(object):
           kind = 'TagData'
           code = self.link[c4d.TPYTHON_CODE]
           plugin_flags = 'c4d.TAG_VISIBLE | c4d.TAG_EXPRESSION'
-        code_parts = codeconv.refactor_expression_script(code, kind, indent='  ')
+        code_parts = refactor_expression_script(code, kind)
       else:
         code_parts = {}
 
@@ -500,8 +578,8 @@ class PrototypeConverter(object):
           (symbol_map.descid_to_node[did], params)
           for did, params in symbol_map.hardcoded_description.items()
         ],
-        'docstrings': code_parts.get('docstrings'),
-        'future_import': code_parts.get('future_imports'),
+        'docstrings': code_parts.get('docstring'),
+        'future_import': code_parts.get('future_line'),
         'global_code': code_parts.get('code'),
         'member_code': code_parts.get('member_code'),
         'plugin_class': re.sub('[^\w\d]+', '', self.plugin_name) + 'Data',
@@ -517,7 +595,7 @@ class PrototypeConverter(object):
       # Write the code for now so you can inspect it should refactoring go wrong.
       with open(files['plugin'], 'w') as fp:
         fp.write(code)
-      code = codeconv.refactor_indentation(code, self.indent)
+      code = refactor.indentation(code, self.indent)
       with open(files['plugin'], 'w') as fp:
         fp.write(code)
 
@@ -1119,7 +1197,7 @@ class ScriptConverter(object):
 
   def create(self):
     with open(self.script_file) as fp:
-      code_parts = codeconv.refactor_command_script(fp.read(), indent='  ')
+      code_parts = refactor_command_script(fp.read())
     # Indent the code appropriately for the plugin stub.
     member_code = '\n'.join('  ' + l for l in code_parts['member_code'].split('\n'))
     files = self.files()
@@ -1128,11 +1206,11 @@ class ScriptConverter(object):
       'plugin_id': self.plugin_id.strip(),
       'plugin_class': re.sub('[^\w\d]+', '', self.plugin_name),
       'plugin_icon': 'res/icons/' + os.path.basename(files['icon']) if files.get('icon') else None,
-      'future_import': code_parts['future_imports'],
+      'future_import': code_parts['future_line'],
       'global_code': code_parts['code'],
       'member_code': member_code,
       'plugin_help': self.plugin_help,
-      'docstrings': code_parts['docstrings']
+      'docstrings': code_parts['docstring']
     }
     with open(res_file('templates/command_plugin.txt')) as fp:
       template = fp.read()
