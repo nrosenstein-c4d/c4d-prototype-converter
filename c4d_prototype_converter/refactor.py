@@ -261,6 +261,16 @@ class FixStripDocstrings(DelayBindBaseFix):
             child.replace(BlankLine())
 
 
+class FixUserDataAccess(DelayBindBaseFix):
+
+  PATTERN = "power<'c4d' trailer<'.' 'ID_USERDATA' > >"
+
+  def transform(self, node, result):
+    #print(repr(node))
+    # TODO
+    pass
+
+
 def strip_empty_lines(string):
   lines = []
   for line in string.split('\n'):
