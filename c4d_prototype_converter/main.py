@@ -281,19 +281,10 @@ def refactor_expression_script(code, kind, symbols_map):
 
 def refactor_command_script(code):
   code = refactor.indentation(code, '  ')  # To match the indentation of the plugin stub.
-  print('='*80)
-  print(code)
   code, docstring = refactor.split_docstring(code)
-  print('='*80)
-  print(code)
   code, exec_func = refactor.split_and_refactor_global_function(
     code, 'main', 'Execute', ['self', 'doc'], add_statement='return True')
-  print('='*80)
-  print(code)
   code, future_line = refactor.split_future_imports(code)
-  print('='*80)
-  print(code)
-  print('='*80)
 
   if exec_func:
     member_code = exec_func
