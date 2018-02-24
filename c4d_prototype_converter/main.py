@@ -1204,6 +1204,14 @@ class ScriptConverter(object):
       metadata = self.get_script_file_metadata(self.script_file)
       self.plugin_help = metadata.get('description')
     if not self.icon_file:
+      if self.script_file:
+        for suffix in ('.tif', '.tiff', '.png', '.jpg'):
+          self.icon_file = os.path.splitext(self.script_file)[0] + suffix
+          if os.path.isfile(self.icon_file):
+            break
+        else:
+          self.icon_file = None
+    if not self.icon_file:
       self.icon_file = res.path('res/icons/default-icon.tiff')
 
   def files(self):
