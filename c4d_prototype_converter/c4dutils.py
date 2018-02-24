@@ -228,13 +228,13 @@ class BaseDialog(c4d.gui.GeDialog):
         'save': c4d.FILESELECT_SAVE,
         'directory': c4d.FILESELECT_DIRECTORY
       }[widget['fileselecttype']]
-      path = c4d.storage.LoadDialog(flags=flags)
+      path = c4d.storage.LoadDialog(flags=flags, def_path=widget['def_path'])
       if path:
         self.SetString(widget['id.string'], path)
         self.SendCommand(widget['id.string'])
       return True
 
-  def AddFileSelector(self, param_id, flags, type='load'):
+  def AddFileSelector(self, param_id, flags, type='load', def_path=None):
     if type not in ('load', 'save', 'directory'):
       raise ValueError('invalid type: {!r}'.format(type))
     widget = {
@@ -242,6 +242,7 @@ class BaseDialog(c4d.gui.GeDialog):
       'id.string': self.AllocId(),
       'id.button': self.AllocId(),
       'callback': self.__FileSelectorCallback,
+      'def_path': def_path,
       'fileselecttype': type
     }
     self.__widgets[param_id] = widget

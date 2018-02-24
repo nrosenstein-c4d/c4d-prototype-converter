@@ -1007,6 +1007,7 @@ class PrototypeConverterDialog(BaseDialog):
   # c4d.gui.GeDialog
 
   def CreateLayout(self):
+    plugins_dir = os.path.join(c4d.storage.GeGetC4DPath(c4d.C4D_PATH_LIBRARY_USER), 'plugins')
     self.SetTitle('Prototype Converter')
     self.GroupBorderSpace(6, 6, 6, 6)
     self.GroupBegin(0, c4d.BFH_SCALEFIT | c4d.BFV_TOP, 0, 1)  # MAIN {
@@ -1053,7 +1054,8 @@ class PrototypeConverterDialog(BaseDialog):
     self.AddStaticText(0, c4d.BFH_LEFT, name='Icon')
     self.AddFileSelector(self.ID_ICON_FILE, c4d.BFH_SCALEFIT, type='load')
     self.AddStaticText(self.ID_DIRECTORY_TEXT, c4d.BFH_LEFT, name='Plugin Directory')
-    self.AddFileSelector(self.ID_DIRECTORY, c4d.BFH_SCALEFIT, type='directory')
+    self.AddFileSelector(self.ID_DIRECTORY, c4d.BFH_SCALEFIT, type='directory',
+      def_path=plugins_dir)
     self.GroupEnd() # } MAIN/LEFT/PARAMS/EXPORTSETTINGS
 
     self.GroupEnd()  # } MAIN/LEFT/PARAMS
@@ -1309,8 +1311,10 @@ class ScriptConverterDialog(BaseDialog):
       c4d.storage.ShowInFinder(cnv.files()['directory'])
 
   def CreateLayout(self):
+    scripts_dir = os.path.join(c4d.storage.GeGetC4DPath(c4d.C4D_PATH_LIBRARY_USER), 'scripts')
+    plugins_dir = os.path.join(c4d.storage.GeGetC4DPath(c4d.C4D_PATH_LIBRARY_USER), 'plugins')
     self.script_filenames = self.get_library_scripts()
-    self.SetTitle('Script to Command Plugin Converter')
+    self.SetTitle('Script Converter')
     self.GroupBorderSpace(6, 6, 6, 6)
     self.GroupBegin(self.ID_GROUP_MAIN, c4d.BFH_SCALEFIT, 1, 0)  # MAIN {
 
@@ -1330,11 +1334,13 @@ class ScriptConverterDialog(BaseDialog):
     for i, (fn, name, _) in enumerate(self.script_filenames, 1):
       self.AddChild(self.ID_SCRIPT_COMBOBOX, i, name)
     self.AddStaticText(self.ID_SCRIPT_FILE_TEXT, c4d.BFH_LEFT, name='Filename *')
-    self.AddFileSelector(self.ID_SCRIPT_FILE, c4d.BFH_SCALEFIT, type='load')
+    self.AddFileSelector(self.ID_SCRIPT_FILE, c4d.BFH_SCALEFIT, type='load',
+      def_path=scripts_dir)
     self.AddStaticText(0, c4d.BFH_LEFT, name='Icon')
     self.AddFileSelector(self.ID_ICON_FILE, c4d.BFH_SCALEFIT, type='load')
     self.AddStaticText(0, c4d.BFH_LEFT, name='Plugin Directory')
-    self.AddFileSelector(self.ID_DIRECTORY, c4d.BFH_SCALEFIT, type='directory')
+    self.AddFileSelector(self.ID_DIRECTORY, c4d.BFH_SCALEFIT, type='directory',
+      def_path=plugins_dir)
     self.GroupEnd()
     self.GroupEnd() # } MAIN/PARAMS
 
