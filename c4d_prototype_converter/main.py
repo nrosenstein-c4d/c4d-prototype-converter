@@ -311,6 +311,34 @@ COLOR_RED = c4d.Vector(0.9, 0.3, 0.3)
 COLOR_YELLOW = c4d.Vector(0.9, 0.8, 0.6)
 
 
+class _PluginDialog(BaseDialog):
+
+  MENU_HELP_SHOW = 9000
+  MENU_HELP_REPORT = 9001
+  MENU_HELP_ABOUT = 9002
+
+  def create_menu(self):
+    self.MenuFlushAll()
+    self.MenuSubBegin('Help')
+    self.MenuAddString(self.MENU_HELP_ABOUT, 'About...')
+    self.MenuAddString(self.MENU_HELP_SHOW, 'Show Help...')
+    self.MenuAddString(self.MENU_HELP_REPORT, 'Report Bug/Idea...')
+    self.MenuSubEnd()
+    self.MenuFinished()
+
+  def handle_menu(self, menu_id):
+    if menu_id == self.MENU_HELP_ABOUT:
+      c4d.gui.MessageDialog('C4D Prototype Converter\n\nProgramming and Design: Niklas Rosenstein\nConcept and Design: Donovan Keith\n\nSponsored by Maxon US.')
+      return True
+    elif menu_id == self.MENU_HELP_REPORT:
+      webbrowser.open('https://github.com/NiklasRosenstein/c4d-prototype-converter/issues')
+      return True
+    elif menu_id == self.MENU_HELP_SHOW:
+      webbrowser.open('https://github.com/NiklasRosenstein/c4d-prototype-converter/wiki')
+      return True
+    return False
+
+
 class SymbolMap(object):
   """
   A map for User Data symbols used in the #PrototypeConverter.
@@ -853,7 +881,7 @@ class PrototypeConverter(object):
     return False
 
 
-class PrototypeConverterDialog(BaseDialog):
+class PrototypeConverterDialog(_PluginDialog):
   """
   Implements the User Interface to convert an object's UserData to a
   Cinema 4D description resource.
@@ -1073,6 +1101,7 @@ class PrototypeConverterDialog(BaseDialog):
     self.AddButton(self.ID_CANCEL, c4d.BFH_CENTER, name='Cancel')
     self.GroupEnd()  # } BUTTONS
 
+    self.create_menu()
     return True
 
   def InitValues(self):
@@ -1088,6 +1117,8 @@ class PrototypeConverterDialog(BaseDialog):
 
   def Command(self, param_id, bc):
     if BaseDialog.Command(self, param_id, bc):
+      return True
+    if self.handle_menu(param_id):
       return True
 
     # The actual ID that we create a widget with. The real parameter ID and
@@ -1218,7 +1249,7 @@ class ScriptConverter(object):
       fp.write(little_jinja(template, context))
 
 
-class ScriptConverterDialog(BaseDialog):
+class ScriptConverterDialog(_PluginDialog):
   """
   This dialog implements the User Interface for converting Cinema 4D Python
   scripts for the Script Manager to Python plugins.
@@ -1352,11 +1383,14 @@ class ScriptConverterDialog(BaseDialog):
 
     self.GroupEnd() # } MAIN
 
+    self.create_menu()
     self.update_enabling()
     return True
 
   def Command(self, param_id, bc):
     if super(ScriptConverterDialog, self).Command(param_id, bc):
+      return True
+    if self.handle_menu(param_id):
       return True
 
     virtual_id = self.ReverseMapId(param_id)[1]
