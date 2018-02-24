@@ -1276,6 +1276,7 @@ class ScriptConverterDialog(BaseDialog):
   def get_library_scripts():
     dirs = [os.path.join(c4d.storage.GeGetC4DPath(x), 'scripts')
       for x in [c4d.C4D_PATH_LIBRARY, c4d.C4D_PATH_LIBRARY_USER]]
+    dirs += os.getenv('C4D_SCRIPTS_DIR', '').split(os.pathsep)
     result = []
     def recurse(directory, depth=0):
       if not os.path.isdir(directory): return
@@ -1292,7 +1293,9 @@ class ScriptConverterDialog(BaseDialog):
         name += '&i' + str(c4d.RESOURCEIMAGE_TIMELINE_FOLDER2)
         result.insert(directory_index, (directory, name, False))
     for dirname in dirs:
-      recurse(dirname)
+      dirname = dirname.strip()
+      if dirname:
+        recurse(dirname)
     return result
 
   def do_create(self):
