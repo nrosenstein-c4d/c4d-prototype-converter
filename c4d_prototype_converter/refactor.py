@@ -263,12 +263,29 @@ class FixStripDocstrings(DelayBindBaseFix):
 
 class FixUserDataAccess(DelayBindBaseFix):
 
-  PATTERN = "power<'c4d' trailer<'.' 'ID_USERDATA' > >"
+  PATTERN = """
+    subscriptlist<
+      power<
+        'c4d'
+        trailer<'.' 'ID_USERDATA'>
+      >
+      ','
+      any
+    >
+  """
+
+  def __init__(self, subfun):
+    assert callable(subfun)
+    self.subfun = subfun
 
   def transform(self, node, result):
-    #print(repr(node))
-    # TODO
-    pass
+    if len(node.children) == 3 and node.children[-1].type == token.NUMBER:
+      userdata_id = int(node.children[-1].value)
+      replacement = self.subfun(userdata_id)
+      if replacement:
+        new = Node(python_symbols.subscriptlist, [Leaf(token.NAME, replacement)])
+        return new
+    return None
 
 
 def strip_empty_lines(string):
@@ -298,6 +315,16 @@ def split_and_refactor_global_function(code, func_name, new_func_name=None,
   code = str(refactor_string([fixer], code))
   functions = '\n'.join(strip_empty_lines(str(x)) for x in fixer.results)
   return strip_empty_lines(code), functions
+
+
+def fix_userdata_access(code, subfun):
+  """
+  Replace occurences of `[c4d.ID_USERDATA, X]` with a replacement `[Y]`
+  where `Y = subfun(X)`.
+  """
+
+  fixer = FixUserDataAccess(subfun)
+  return str(refactor_string([fixer], code))
 
 
 def indentation(code, indent):

@@ -236,19 +236,25 @@ def open_plugin_id_page():
   webbrowser.open('http://www.plugincafe.com/forum/developer.asp')
 
 
-def refactor_expression_script(code, kind):
-  member_code = ''
+def refactor_expression_script(code, kind, symbols_map):
+  # Replace occurences of [c4d.ID_USERDATA, X] with the symbol.
+  uid_reverse_map = {did[-1].id: sym for did, sym in
+    symbols_map.descid_to_symbol.iteritems()}
+  def subfun(x):
+    if x in uid_reverse_map:
+      return 'res.' + uid_reverse_map[x]
+    else:
+      print('note: could not reverse map [c4d.ID_USERDATA, {}]'.format(x))
+      return None
+  code = refactor.fix_userdata_access(code, subfun)
+
   code = refactor.indentation(code, '  ')  # To match the indentation of the plugin stub.
-  print('='*80)
-  print(code)
   code, docstring = refactor.split_docstring(code)
-  print('='*80)
-  print(code)
   code, msg_code = refactor.split_and_refactor_global_function(
     code, 'message', 'Message', ['self', 'op'], add_statement='return True')
-  member_code += msg_code
-  print('='*80)
-  print(code)
+
+  member_code = msg_code
+
   if kind == 'ObjectData':
     code, gvo_code = refactor.split_and_refactor_global_function(
       code, 'main', 'GetVirtualObjects', ['self', 'op', 'hh'])
@@ -261,16 +267,9 @@ def refactor_expression_script(code, kind):
   else:
     raise ValueError(kind)
 
-  print('='*80)
-  print(code)
+  # Must be done last, as afterwards the *code* may no longer be valid
+  # syntax if print_function was used.
   code, future_line = refactor.split_future_imports(code)
-  print('='*80)
-  print(code)
-  print('='*80)
-
-  print('MEMBER CODE')
-  print(member_code)
-  print('='*80)
 
   return {
     'future_line': future_line,
@@ -505,7 +504,7 @@ class PrototypeConverter(object):
     ud_tree.visit(lambda x: symbol_map.allocate_symbol(x) if x != ud_main_group else None, False)
 
     # Render the symbols to the description header. This will also
-    # initialize our symbols_map.
+    # initialize our symbol_map.
     makedirs(os.path.dirname(files['header']))
     with open(files['header'], 'w') as fp:
       fp.write('#pragma once\nenum {\n')
@@ -559,7 +558,7 @@ class PrototypeConverter(object):
           kind = 'TagData'
           code = self.link[c4d.TPYTHON_CODE]
           plugin_flags = 'c4d.TAG_VISIBLE | c4d.TAG_EXPRESSION'
-        code_parts = refactor_expression_script(code, kind)
+        code_parts = refactor_expression_script(code, kind, symbol_map)
       else:
         code_parts = {}
 
