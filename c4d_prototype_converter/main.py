@@ -961,9 +961,9 @@ class PrototypeConverterDialog(BaseDialog):
         self.SetColor(widget_id, c4d.COLOR_TEXT, color)
     self.LayoutChanged(self.ID_FILELIST_GROUP)
 
-    self.SetString(self.ID_SYMBOL_PREFIX, cnv.symbol_prefix, False, c4d.EDITTEXT_HELPTEXT)
-    self.SetString(self.ID_RESOURCE_NAME, cnv.resource_name, False, c4d.EDITTEXT_HELPTEXT)
-    self.SetString(self.ID_PLUGIN_NAME, cnv.plugin_name, False, c4d.EDITTEXT_HELPTEXT)
+    self.SetString(self.ID_SYMBOL_PREFIX, cnv.symbol_prefix, flags=c4d.EDITTEXT_HELPTEXT)
+    self.SetString(self.ID_RESOURCE_NAME, cnv.resource_name, flags=c4d.EDITTEXT_HELPTEXT)
+    self.SetString(self.ID_PLUGIN_NAME, cnv.plugin_name, flags=c4d.EDITTEXT_HELPTEXT)
     self.SetFileSelectorString(self.ID_ICON_FILE, cnv.icon_file, flags=c4d.EDITTEXT_HELPTEXT)
     self.SetFileSelectorString(self.ID_DIRECTORY, cnv.directory, flags=c4d.EDITTEXT_HELPTEXT)
 
@@ -1073,17 +1073,17 @@ class PrototypeConverterDialog(BaseDialog):
     self.AddButton(self.ID_CANCEL, c4d.BFH_CENTER, name='Cancel')
     self.GroupEnd()  # } BUTTONS
 
-    # Initialize values.
+    return True
+
+  def InitValues(self):
     self.SetBool(self.ID_OVERWRITE, False)
     self.SetInt32(self.ID_INDENT, self.INDENT_2SPACE)
     self.SetInt32(self.ID_SYMBOLMODE, self.SYMBOLMODE_C4DDEV)
     self.SetLink(self.ID_LINK, c4d.documents.GetActiveDocument().GetActiveObject())
-    self.load_settings(update_ui=False)
 
-    # Update UI.
+    self.load_settings(update_ui=False)
     self.update_filelist()
     self.update_enabling()
-
     return True
 
   def Command(self, param_id, bc):
