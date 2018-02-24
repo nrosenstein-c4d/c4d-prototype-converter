@@ -1169,7 +1169,7 @@ class ScriptConverter(object):
     with open(filename) as fp:
       code = fp.read()
     result = {}
-    for field in re.findall('^(Name-US|Description-US):(.*)$', code, re.M):
+    for field in re.findall('(Name-US|Description-US):(.*)$', code, re.M):
       if field[0] == 'Name-US':
         result['name'] = field[1].strip()
       elif field[0] == 'Description-US':
