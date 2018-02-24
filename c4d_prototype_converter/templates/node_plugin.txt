@@ -3,6 +3,11 @@
 {{ docstrings }}
 {%- endif -%}
 
+# TODO: Remove redundant imports
+# TODO: Update Copyright information
+# TODO: Add a README file
+# TODO: Keep in mind that the variables `doc` and `op` are no longer globally available
+
 {%- if future_import -%}
 {{ future_import }}
 {%- endif -%}
