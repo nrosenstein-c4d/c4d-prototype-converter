@@ -30,143 +30,20 @@ import shutil
 import sys
 import webbrowser
 
+from nr.c4d.ui import native as c4dui
+from .widgets import FileList
+
 from . import refactor, res
 from .c4dutils import (unicode_refreplace, get_subcontainer, has_subcontainer,
   find_menu_resource, DialogOpenerCommand, BaseDialog)
 from .generics import Generic, HashDict
 from .little_jinja import little_jinja
-from .utils import makedirs, nullable_ref
-
-
-class Node(object):
-  """
-  Generic tree node type.
-  """
-
-  __metaclass__ = Generic
-  __generic_args__ = ['data_cls']
-
-  def __init__(self, *args, **kwargs):
-    if not self.__generic_bind__:
-      raise TypeError('missing generic arguments for Node class')
-    if self.data_cls is None:
-      if args or kwargs:
-        raise TypeError('{} takes no arguments'.format(type(self).__name__))
-      self.data = None
-    else:
-      self.data = self.data_cls(*args, **kwargs)
-    self.parent = nullable_ref(None)
-    self.children = []
-
-  def __repr__(self):
-    return '<Node data={!r}>'.format(self.data)
-
-  def __getitem__(self, key):
-    if isinstance(self.data, dict):
-      return self.data[key]
-    return getattr(self.data, key)
-
-  def __setitem__(self, key, value):
-    if isinstance(self.data, dict):
-      self.data[key] = value
-    else:
-      if hasattr(self.data, key):
-        setattr(self.data, key, value)
-      else:
-        raise AttributeError('{} has no attribute {}'.format(
-          type(self.data).__name__, key))
-
-  def get(self, key, default=None):
-    if isinstance(self.data, dict):
-      return self.data.get(key, default)
-    else:
-      return getattr(self.data, key, default)
-
-  def add_child(self, node):
-    node.remove()
-    node.parent.set(self)
-    self.children.append(node)
-
-  def remove(self):
-    parent = self.parent()
-    if parent:
-      parent.children.remove(self)
-    self.parent.set(None)
-
-  def visit(self, func, with_root=True, post_order=False):
-    if with_root and not post_order:
-      func(self)
-    for child in self.children:
-      child.visit(func)
-    if with_root and post_order:
-      func(self)
-
-  def depth(self, stop_cond=None):
-    count = 0
-    while True:
-      self = self.parent()
-      if not self: break
-      if stop_cond is not None and stop_cond(self): break
-      count += 1
-    return count
+from .utils import makedirs, nullable_ref, Node
 
 
 def res_file(path):
   res_dir = os.path.join(os.path.dirname(__file__))
   return os.path.join(res_dir, path)
-
-
-def path_parents(path):
-  """
-  A generator that returns *path* and all its parent directories.
-  """
-
-  yield path
-  prev = None
-  while True:
-    path = os.path.dirname(path)
-    if not path or prev == path: break  # Top of relative path or of filesystem
-    yield path
-    prev = path
-
-
-def file_tree(items, parent=None, flat=False, key=None):
-  """
-  Produces a tree structure from a list of filenames. Returns a list of the
-  root entries. If *flat* is set to #True, the returned list contains a flat
-  version of all entries in the tree.
-  """
-
-  DataNode = Node[collections.namedtuple('Data', 'path isdir data')]
-  entries = {}
-
-  items = ((os.path.normpath(key(x)), x) for x in items)
-  if parent:
-    items = [(os.path.relpath(k, parent), v) for k, v in items]
-
-  if flat:
-    order = []
-  for filename, data in items:
-    parent_entry = None
-    for path in reversed(list(path_parents(filename))):
-      entry = entries.get(path)
-      if not entry:
-        entry = DataNode(path, path!=filename, data)
-        if parent_entry:
-          parent_entry.add_child(entry)
-        entries[path] = entry
-        base = os.path.basename(path)
-      parent_entry = entry
-    if flat:
-      order.append(entry)
-
-  roots = (x for x in entries.values() if not x.parent)
-  if flat:
-    result = []
-    [x.visit(lambda y: result.append(y)) for x in roots]
-    return result
-  else:
-    return list(roots)
 
 
 def userdata_tree(ud):
@@ -1421,10 +1298,117 @@ class ScriptConverterDialog(_PluginDialog):
     return True
 
 
+class NewPrototypeConverterDialog(c4dui.DialogWindow):
+
+  def __init__(self):
+    super(NewPrototypeConverterDialog, self).__init__()
+    self.load_xml_string('''
+      <Group borderspace="2,2,2,2" layout="fill" cols="2">
+        <MenuGroup id="menu">
+          <MenuGroup name="Help">
+            <MenuGroup id="menu.help.about" name="About..."/>
+            <MenuGroup id="menu.help.show_help" name="Show Help..."/>
+            <MenuGroup id="menu.help.report" name="Report Bug/Idea..."/>
+          </MenuGroup>
+        </MenuGroup>
+
+        <!-- Left part of the dialog that shows the export and plugin options. -->
+        <Group layout="fill-x,top" cols="1">
+          <Group borderspace="6,6,6,6" layout="fill-x,top" title="Export" cols="2" border="thin_in">
+            <Text text="Mode"/>
+            <Combobox id="export_mode">
+              <Item text="Resource Files + Plugin Stub" ident="all"/>
+              <Item text="Resource Files" ident="res"/>
+              <Item text="Plugin Stub" ident="plugin"/>
+            </Combobox>
+            <Text text="Resource Symbols"/>
+            <Quicktab id="symbol_mode">
+              <Item text="Cinema 4D" ident="c4d"/>
+              <Item text="C4DDev" ident="c4ddev"/>
+            </Quicktab>
+            <Text text="Indentation"/>
+            <Quicktab id="indent_mode">
+              <Item text="Tab" ident="tab"/>
+              <Item text="2 Spaces" ident="2space"/>
+              <Item text="4 Spaces" ident="4space"/>
+            </Quicktab>
+            <Text text="Overwrite"/>
+            <Checkbox id="overwrite"/>
+          </Group>
+          <Group borderspace="6,6,6,6" layout="fill-x,top" title="Plugin" cols="2" border="thin_in">
+            <Text text="Source *"/>
+            <LinkBox id="source"/>
+            <Text text="Plugin Name"/>
+            <Input id="plugin_name" type="string" layout="fit-x,middle"/>
+            <Text text="Plugin ID *"/>
+            <Input id="plugin_id" type="string" minw="120"/>
+            <Text text="Resource Name"/>
+            <Input id="resource_name" type="string" layout="fit-x,middle"/>
+            <Text text="Symbol Prefix"/>
+            <Input id="symbol_prefix" type="string" layout="fit-x,middle"/>
+            <Text text="Icon"/>
+            <FileSelector id="icon_file" type="load"/>
+            <Text text="Plugin Directory"/>
+            <FileSelector id="plugin_directory" type="directory"/>
+          </Group>
+        </Group>
+
+        <!-- Right part that shows the file list. -->
+        <Group borderspace="6,6,6,6" layout="fit-x,fit-y" cols="1" title="Filelist" border="thin_in">
+          <FileList id="filelist"/>
+        </Group>
+
+        <Button id="create" text="Create"/>
+        <Button id="cancel" text="Cancel" layout="right"/>
+      </Group>
+    ''')
+
+    self.widgets['create'].add_event_listener('click', self.on_create)
+    for key in ('source', 'plugin_name', 'resource_name', 'icon_file',
+                'plugin_directory', 'overwrite', 'export_mode'):
+      self.widgets[key].add_event_listener('value-changed', self.on_change)
+
+  def get_converter(self):
+    export_mode = self.widgets['export_mode'].active_item.ident
+    symbol_mode = self.widgets['symbol_mode'].active_item.ident
+    indent_mode = self.widgets['indent_mode'].active_item.ident
+    indent = {'tab': '\t', '2space': '  ', '4space': '    '}[indent_mode]
+    return PrototypeConverter(
+      link = self.widgets['source'].get_link(),
+      plugin_name = self.widgets['plugin_name'].value,
+      plugin_id = self.widgets['plugin_id'].value.strip(),
+      resource_name = self.widgets['resource_name'].value,
+      symbol_prefix = self.widgets['symbol_prefix'].value,
+      icon_file = self.widgets['icon_file'].value,
+      directory = self.widgets['plugin_directory'].value,
+      write_plugin_stub = export_mode in ('all', 'plugin'),
+      write_resources = export_mode in ('all', 'res'),
+      symbol_mode = symbol_mode,
+      overwrite = self.widgets['overwrite'].value,
+      indent = indent
+    )
+
+  def on_change(self, widget):
+    cnv = self.get_converter()
+    cnv.autofill()
+    files = cnv.files()
+    parent = os.path.dirname(files.pop('directory'))
+    files = files.values()
+    self.widgets['filelist'].set_files(files, parent)
+
+  def on_create(self, button):
+    cnv = self.get_converter()
+    cnv.autofill()
+    print(cnv.files())
+
+
+  #self.widgets['filelist'].set_files(['Users/Desktop', 'Users/Desktop/foo.c'], 'Users')
+
+
 def main():
   DialogOpenerCommand(ScriptConverterDialog)\
     .Register(ID_SCRIPT_CONVERTER, 'Script Converter...', c4d.PLUGINFLAG_HIDE)
-  DialogOpenerCommand(PrototypeConverterDialog)\
+  DialogOpenerCommand(NewPrototypeConverterDialog)\
     .Register(ID_PLUGIN_CONVERTER, 'Prototype Converter...', c4d.PLUGINFLAG_HIDE)
 
 

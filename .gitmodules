@@ -1,0 +1,3 @@
+[submodule "lib/py-nr.c4d"]
+	path = lib/py-nr.c4d
+	url = git@github.com:NiklasRosenstein/py-nr.c4d.git
