@@ -37,7 +37,7 @@ del blob, b, t, z, m;
 
 import os
 
-with localimport('.') as _importer:
+with localimport(['.', 'lib']) as _importer:
   from c4d_prototype_converter import main, res
   res.__res__ = __res__
   res.plugin_dir = os.path.dirname(__file__)

@@ -1,0 +1,41 @@
+<Group>
+  <MenuGroup>
+    <MenuGroup name="Help">
+      <MenuItem id="menu.help.about" name="About..."/>
+      <MenuItem id="menu.help.report" name="Report Bug/Idea..."/>
+      <MenuItem id="menu.help.help" name="Show Help..."/>
+    </MenuGroup>
+  </MenuGroup>
+  <Group borderspace="6,6,6,6" cols="1">
+    <Group rows="1">
+      <Group cols="2">
+        <Text text="Script"/>
+        <Combobox id="script">
+          <Item text="Select File..." ident="select_file"/>
+          <Separator/>
+        </Combobox>
+        <Text text="Plugin Name"/>
+        <Input id="plugin_name" type="string" layout="fill-x,middle"/>
+        <Text text="Plugin Help"/>
+        <Input id="plugin_help" type="string" layout="fill-x,middle"/>
+        <Text text="Plugin ID *"/>
+        <Group layout="fill-x,middle">
+          <Input id="plugin_id" type="string" minw="120"/>
+          <Button id="get_plugin_id" text="Get Plugin ID"/>
+        </Group>
+        <Text text="Icon"/>
+        <FileSelector type="load"/>
+        <Text text="Plugin Directory"/>
+        <FileSelector type="directory"/>
+      </Group>
+      <Group layout="fit" borderspace="4,4,4,4" title="Files" border="thin_in">
+        <FileList id="filelist"/>
+      </Group>
+    </Group>
+    <Group rows="1">
+      <Button id="create" text="Create"/>
+      <Spacer/>
+      <Button id="cancel" text="Cancel"/>
+    </Group>
+  </Group>
+</Group>
