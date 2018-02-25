@@ -1423,18 +1423,7 @@ class ScriptConverterDialog(_PluginDialog):
     return True
 
 
-
-class FileList(nr.c4d.ui.native.BaseWidget):
-
-  def render(self, dialog):
-    dialog.AddStaticText(0, 0, name="FileList PLaceholder")
-
-
-class ScriptConverterDialog(nr.c4d.ui.native.DialogWindow):
-
-  def CreateLayout(self):
-    self.load_xml_file(res_file('ui/ScriptConverter.xml'))
-    return super(ScriptConverterDialog, self).CreateLayout()
+from .ui.ScriptConverter import ScriptConverter as ScriptConverterDialog
 
 
 def main():

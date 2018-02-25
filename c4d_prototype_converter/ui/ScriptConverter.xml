@@ -1,10 +1,6 @@
 <Group>
   <MenuGroup>
-    <MenuGroup name="Help">
-      <MenuItem id="menu.help.about" name="About..."/>
-      <MenuItem id="menu.help.report" name="Report Bug/Idea..."/>
-      <MenuItem id="menu.help.help" name="Show Help..."/>
-    </MenuGroup>
+    <HelpMenu/>
   </MenuGroup>
   <Group borderspace="6,6,6,6" cols="1">
     <Group rows="1">

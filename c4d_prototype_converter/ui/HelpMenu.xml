@@ -1,3 +1,5 @@
-<Menu title="Help">
-  <MenuItem id="menu.help.help" text="
-</Menu>
+<MenuGroup name="Help">
+  <MenuItem id="about" name="About..."/>
+  <MenuItem id="report" name="Report Bug/Idea..."/>
+  <MenuItem id="help" name="Show Help..."/>
+</MenuGroup>
