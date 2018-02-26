@@ -19,9 +19,9 @@
       </Quicktab>
       <Text text="Indentation"/>
       <Quicktab id="indent_mode">
-        <Item text="Tab" ident="tab"/>
         <Item text="2 Spaces" ident="2space"/>
         <Item text="4 Spaces" ident="4space"/>
+        <Item text="Tab" ident="tab"/>
       </Quicktab>
     </Group>
     <Group borderspace="6,6,6,6" layout="fill-x,top" title="Plugin" cols="2" border="thin_in">

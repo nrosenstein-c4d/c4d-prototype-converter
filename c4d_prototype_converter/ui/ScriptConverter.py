@@ -5,6 +5,7 @@ import os
 import nr.c4d.ui
 import re
 import shutil
+import traceback
 import webbrowser
 from .HelpMenu import HelpMenu
 from .FileList import FileList
@@ -91,14 +92,16 @@ class Converter(object):
     cls.SCRIPT_FILE_METADATA_CACHE[filename] = result
     return result
 
-  def __init__(self, plugin_name, plugin_id, script_file, icon_file, directory, overwrite=True):
+  def __init__(self, plugin_name='', plugin_help='', plugin_id='',
+      script_file='', icon_file='', directory='', indent='  ', overwrite=True):
     self.plugin_name = plugin_name
+    self.plugin_help = None
     self.plugin_id = plugin_id
     self.script_file = script_file
     self.icon_file = icon_file
     self.directory = directory
+    self.indent = indent
     self.overwrite = overwrite
-    self.plugin_help = None
 
   def autofill(self, default_plugin_name='My Plugin'):
     if not self.plugin_name:
@@ -141,11 +144,18 @@ class Converter(object):
     return result
 
   def create(self):
+    files = self.files()
+    if not self.overwrite:
+      for k, v in files.iteritems():
+        if os.path.isfile(v):
+          raise IOError('File "{}" already exists'.format(v))
+    if not self.plugin_id.isdigit():
+      raise ValueError('Converter.plugin_id is invalid')
+
     with open(self.script_file) as fp:
       code_parts = refactor_command_script(fp.read())
     # Indent the code appropriately for the plugin stub.
     member_code = '\n'.join('  ' + l for l in code_parts['member_code'].split('\n'))
-    files = self.files()
     context = {
       'plugin_name': self.plugin_name,
       'plugin_id': self.plugin_id.strip(),
@@ -167,8 +177,16 @@ class Converter(object):
         print('Warning: Error copying icon:', exc)
     print('Creating', files['plugin'])
     makedirs(os.path.dirname(files['plugin']))
+    code = little_jinja(template, context)
+
+    # Write one-off code.
     with open(files['plugin'], 'w') as fp:
-      fp.write(little_jinja(template, context))
+      fp.write(code)
+
+    # Update indentation.
+    code = refactor.indentation(code, self.indent)
+    with open(files['plugin'], 'w') as fp:
+      fp.write(code)
 
 
 class ScriptConverter(nr.c4d.ui.Component):
@@ -197,13 +215,17 @@ class ScriptConverter(nr.c4d.ui.Component):
       script_file = self['script_file'].value
     else:
       script_file = self.script_files[self['script'].active_index-1][0]
+    indent_mode = self['indent_mode'].active_item.ident.encode()
+    indent = {'tab': '\t', '2space': '  ', '4space': '    '}[indent_mode]
     return Converter(
       plugin_name = self['plugin_name'].value,
+      plugin_help = self['plugin_help'].value,
       plugin_id = self['plugin_id'].value,
       script_file = script_file,
       icon_file = self['icon'].value,
       directory = self['directory'].value,
-      overwrite = self['overwrite'].value
+      overwrite = self['overwrite'].value,
+      indent = indent
     )
 
   def on_change(self, widget):
@@ -238,7 +260,8 @@ class ScriptConverter(nr.c4d.ui.Component):
     cnv.autofill()
     try:
       cnv.create()
-    except IOError as exc:
+    except Exception as exc:
+      traceback.print_exc()
       c4d.gui.MessageDialog(str(exc))
     else:
       c4d.storage.ShowInFinder(cnv.files()['directory'])
