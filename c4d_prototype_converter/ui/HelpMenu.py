@@ -25,7 +25,7 @@ class HelpMenu(nr.c4d.ui.Component):
     ''').strip())
 
   def _on_help(self, item):
-    webbrowser.open('https://github.com/NiklasRosenstein/c4d-prototyping-converter/wiki')
+    webbrowser.open('https://github.com/NiklasRosenstein/c4d-prototype-converter/wiki')
 
   def _on_report(self, item):
-    webbrowser.open('https://github.com/NiklasRosenstein/c4d-prototyping-converter/issues')
+    webbrowser.open('https://github.com/NiklasRosenstein/c4d-prototype-converter/issues')
