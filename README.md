@@ -10,7 +10,7 @@ to a plugin.
     <th colspan="2" align="left">Script Converter</th>
   </tr>
   <tr>
-    <td><img src="https://i.imgur.com/OV08gew.png" width="auto"></td>
+    <td><img src="https://i.imgur.com/XgSe0re.png" width="auto"></td>
     <td>
 
 This tool converts a Cinema 4D Python Script to a `CommandData` plugin.
@@ -27,7 +27,7 @@ Scripts you convert with this tool should have a `main()` function.
     <th colspan="2" align="left">Prototype Converter</th>
   </tr>
   <tr>
-    <td><img src="https://i.imgur.com/1b1kzsu.png" width="auto"></td>
+    <td><img src="https://i.imgur.com/zNdGmv6.png" width="auto"></td>
     <td>
 
 This tool converts a Cinema 4D Python Generator or Expression Tag to a
@@ -47,10 +47,10 @@ This tool converts a Cinema 4D Python Generator or Expression Tag to a
 
 <details><summary>How to install the Plugin?</summary>
 
-> Simply download the source code from the GitHub repository and unpack it
-> into your Cinema 4D plugins folder.
->
-> ![](https://i.imgur.com/v1KiKNf.png)
+> Downloading the source code from GitHub is not sufficient as it will not
+> include Git submodules. Check the [Releases][] page to find the latest
+> downloadable release or use a Git client to clone the repository recursively
+> into your Cinema 4D plugins directory.
 
 </details>
 
