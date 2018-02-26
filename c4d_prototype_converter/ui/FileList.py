@@ -1,7 +1,8 @@
 
+import c4d
 import collections
 import os
-import nr.c4d.ui
+from nr.c4d.ui.native import BaseWidget, get_layout_flags
 from ..utils import Node
 
 
@@ -26,11 +27,11 @@ def file_tree(items, parent=None, flat=False, key=None):
   version of all entries in the tree.
   """
 
-  if key is None:
-    key = lambda x: x
-
   DataNode = Node[collections.namedtuple('Data', 'path isdir data')]
   entries = {}
+
+  if key is None:
+    key = lambda x: x
 
   items = ((os.path.normpath(key(x)), x) for x in items)
   if parent:
@@ -61,21 +62,41 @@ def file_tree(items, parent=None, flat=False, key=None):
     return list(roots)
 
 
-class FileList(nr.c4d.ui.native.BaseWidget):
+class FileList(BaseWidget):
+  """
+  Shows a list of files in a tree with the single highest directory first.
+  If a file already exists, it will be rendered in red unless the *overwrite*
+  flag is set in the widget. Additionally, files that are only written if
+  they not already exist can be marked as such and are rendered in yellow.
+  """
 
-  def __init__(self, layout='fit', id=None):
+  def __init__(self, layout_flags='left,fit-y', id=None):
     super(FileList, self).__init__(id)
-    self.layout = layout
-    self._file_nodes = []
+    self.layout_flags = layout_flags
+    self._flat_nodes = []
 
   def set_files(self, files, parent):
     files = sorted(files, key=lambda x: x.lower())
-    self._file_nodes = file_tree(files, parent, True)
+    self._flat_nodes = file_tree(files, parent=parent, flat=True)
+    self.layout_changed()
 
   def render(self, dialog):
-    layout_flags = nr.c4d.ui.native.get_layout_flags(self.layout)
+    layout_flags = get_layout_flags(self.layout_flags)
     dialog.GroupBegin(0, layout_flags, 1, 0)
-    for node in self._file_nodes:
+    for node in self._flat_nodes:
       depth = node.depth()
-      dialog.AddStaticText(0, 0, name='  ' * depth + node['path'])
+      name = '  ' * depth + os.path.basename(node['path'])
+      if node['isdir']:
+        name += '/'
+      widget_id = self.alloc_id()
+      dialog.AddStaticText(widget_id, c4d.BFH_LEFT, name=name)
+      #full_path = os.path.join(parent, node['path'])
+      #if not node['isdir'] and os.path.isfile(full_path):
+        #if node['data'][0] in cnv.optional_file_ids():
+        #  color = COLOR_BLUE
+        #elif cnv.overwrite:
+        #  color = COLOR_YELLOW
+        #else:
+        #  color = COLOR_RED
+        #dialog.SetColor(widget_id, c4d.COLOR_TEXT, color)
     dialog.GroupEnd()

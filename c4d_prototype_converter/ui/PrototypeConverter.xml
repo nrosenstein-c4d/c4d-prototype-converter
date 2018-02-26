@@ -1,0 +1,57 @@
+<Group borderspace="2,2,2,2" layout="fill" cols="2">
+  <MenuGroup>
+    <HelpMenu/>
+  </MenuGroup>
+
+  <!-- Left part of the dialog that shows the export and plugin options. -->
+  <Group layout="fill-x,top" cols="1">
+    <Group borderspace="6,6,6,6" layout="fill-x,top" title="Export" cols="2" border="thin_in">
+      <Text text="Mode"/>
+      <Combobox id="export_mode">
+        <Item text="Resource Files + Plugin Stub" ident="all"/>
+        <Item text="Resource Files" ident="res"/>
+        <Item text="Plugin Stub" ident="plugin"/>
+      </Combobox>
+      <Text text="Resource Symbols"/>
+      <Quicktab id="symbol_mode">
+        <Item text="Cinema 4D" ident="c4d"/>
+        <Item text="C4DDev" ident="c4ddev"/>
+      </Quicktab>
+      <Text text="Indentation"/>
+      <Quicktab id="indent_mode">
+        <Item text="Tab" ident="tab"/>
+        <Item text="2 Spaces" ident="2space"/>
+        <Item text="4 Spaces" ident="4space"/>
+      </Quicktab>
+      <Text text="Overwrite"/>
+      <Checkbox id="overwrite"/>
+    </Group>
+    <Group borderspace="6,6,6,6" layout="fill-x,top" title="Plugin" cols="2" border="thin_in">
+      <Text text="Source *"/>
+      <LinkBox id="source"/>
+      <Text text="Plugin Name"/>
+      <Input id="plugin_name" type="string" layout="fit-x,middle"/>
+      <Text text="Plugin ID *"/>
+      <Group layout="fill-x,middle">
+        <Input id="plugin_id" type="string" minw="120"/>
+        <Button id="get_plugin_id" text="Get Plugin ID"/>
+      </Group>
+      <Text text="Resource Name"/>
+      <Input id="resource_name" type="string" layout="fit-x,middle"/>
+      <Text text="Symbol Prefix"/>
+      <Input id="symbol_prefix" type="string" layout="fit-x,middle"/>
+      <Text text="Icon"/>
+      <FileSelector id="icon_file" type="load"/>
+      <Text text="Plugin Directory"/>
+      <FileSelector id="plugin_directory" type="directory"/>
+    </Group>
+  </Group>
+
+  <!-- Right part that shows the file list. -->
+  <Group borderspace="6,6,6,6" layout="fit-x,fit-y" cols="1" title="Files" border="thin_in">
+    <FileList id="filelist"/>
+  </Group>
+
+  <Button id="create" text="Create"/>
+  <Button id="cancel" text="Cancel" layout="right"/>
+</Group>

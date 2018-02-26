@@ -4,7 +4,7 @@ import nr.c4d.ui
 import webbrowser
 
 
-class HelpMenu(nr.c4d.ui.native.SubComponent):
+class HelpMenu(nr.c4d.ui.Component):
 
   def __init__(self, id=None):
     super(HelpMenu, self).__init__(id)

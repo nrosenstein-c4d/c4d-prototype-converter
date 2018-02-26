@@ -10,6 +10,8 @@
           <Item text="Select File..." ident="select_file"/>
           <Separator/>
         </Combobox>
+        <Text text="" id="script_file_text"/>
+        <FileSelector type="load" id="script_file"/>
         <Text text="Plugin Name"/>
         <Input id="plugin_name" type="string" layout="fill-x,middle"/>
         <Text text="Plugin Help"/>
@@ -20,9 +22,9 @@
           <Button id="get_plugin_id" text="Get Plugin ID"/>
         </Group>
         <Text text="Icon"/>
-        <FileSelector type="load"/>
+        <FileSelector id="icon" type="load"/>
         <Text text="Plugin Directory"/>
-        <FileSelector type="directory"/>
+        <FileSelector id="directory" type="directory"/>
       </Group>
       <Group layout="fit" borderspace="4,4,4,4" title="Files" border="thin_in">
         <FileList id="filelist"/>

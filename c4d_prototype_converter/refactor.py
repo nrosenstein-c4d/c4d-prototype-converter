@@ -28,6 +28,7 @@ Python Plugins.
 from lib2to3.fixer_base import BaseFix
 from lib2to3.fixer_util import Leaf, Node, BlankLine, find_indentation
 from lib2to3.pgen2 import token
+from lib2to3.pgen2.parse import ParseError
 from lib2to3.pygram import python_symbols
 from lib2to3 import refactor
 

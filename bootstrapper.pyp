@@ -42,5 +42,3 @@ with localimport(['.', 'lib']) as _importer:
   res.__res__ = __res__
   res.plugin_dir = os.path.dirname(__file__)
   PluginMessage = main.PluginMessage
-  if __name__ == '__main__':
-    main.main()
