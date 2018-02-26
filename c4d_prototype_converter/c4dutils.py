@@ -58,8 +58,8 @@ def unicode_refreplace(ustring):
   return fp.getvalue()
 
 
-def get_subcontainer(bc, sub_id):
-  if not has_subcontainer(bc, sub_id):
+def get_subcontainer(bc, sub_id, create=False):
+  if not has_subcontainer(bc, sub_id) and create:
     bc.SetContainer(sub_id, c4d.BaseContainer())
     assert has_subcontainer(bc, sub_id)
   return bc.GetContainerInstance(sub_id)

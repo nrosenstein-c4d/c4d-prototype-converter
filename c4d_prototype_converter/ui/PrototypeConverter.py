@@ -658,7 +658,7 @@ class Converter(object):
   def save_to_link(self):
     if not self.link:
       raise RuntimeError('has no link')
-    bc = get_subcontainer(self.link.GetDataInstance(), ID_PLUGIN_CONVERTER)
+    bc = get_subcontainer(self.link.GetDataInstance(), ID_PLUGIN_CONVERTER, True)
     bc[0] = self.plugin_name
     bc[1] = self.plugin_id
     bc[2] = self.resource_name
@@ -671,6 +671,7 @@ class Converter(object):
 
   def read_from_link(self):
     bc = get_subcontainer(self.link.GetDataInstance(), ID_PLUGIN_CONVERTER)
+    if not bc: bc = c4d.BaseContainer()
     self.plugin_name = bc.GetString(0)
     self.plugin_id = bc.GetString(1)
     self.resource_name = bc.GetString(2)
@@ -685,6 +686,10 @@ class Converter(object):
       return has_subcontainer(self.link.GetDataInstance(), ID_PLUGIN_CONVERTER)
     return False
 
+  def delete_settings(self):
+    data = self.link.GetDataInstance()
+    data.RemoveData(ID_PLUGIN_CONVERTER)
+
 
 class PrototypeConverter(nr.c4d.ui.Component):
 
@@ -696,6 +701,7 @@ class PrototypeConverter(nr.c4d.ui.Component):
                 'plugin_directory', 'overwrite', 'export_mode'):
       self[key].add_event_listener('value-changed', self.on_change)
     self['get_plugin_id'].add_event_listener('click', self.on_get_plugin_id)
+    self['clear_info'].add_event_listener('click', self.on_clear_info)
     super(PrototypeConverter, self).render(dialog)
 
   def init_values(self, dialog):
@@ -736,6 +742,7 @@ class PrototypeConverter(nr.c4d.ui.Component):
     self['symbol_prefix'].set_helptext(cnv.symbol_prefix)
     self['icon_file'].set_helptext(cnv.icon_file)
     self['plugin_directory'].set_helptext(parent)
+    self['clear_info'].enabled = cnv.has_settings()
 
   def on_create(self, button):
     cnv = self.get_converter()
@@ -754,9 +761,11 @@ class PrototypeConverter(nr.c4d.ui.Component):
   def on_get_plugin_id(self, button):
     webbrowser.open('http://www.plugincafe.com/forum/developer.asp')
 
-
-  #self['filelist'].set_files(['Users/Desktop', 'Users/Desktop/foo.c'], 'Users')
-
+  def on_clear_info(self, button):
+    cnv = self.get_converter()
+    if cnv.link:
+      cnv.delete_settings()
+      self.on_change(None)
 
 
 window = nr.c4d.ui.DialogWindow(PrototypeConverter(), title='Prototype Converter')
