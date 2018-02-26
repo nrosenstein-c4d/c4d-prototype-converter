@@ -10,7 +10,7 @@ import sys
 import traceback
 import webbrowser
 from .HelpMenu import HelpMenu
-from .FileList import FileList
+from .FileList import FileList, COLOR_RED
 from ..utils import Node, makedirs
 from ..generics import HashDict
 from ..c4dutils import unicode_refreplace, get_subcontainer, has_subcontainer
@@ -697,7 +697,7 @@ class PrototypeConverter(nr.c4d.ui.Component):
     self.flush_children()
     self.load_xml_file('./PrototypeConverter.xml')
     self['create'].add_event_listener('click', self.on_create)
-    for key in ('source', 'plugin_name', 'resource_name', 'icon_file',
+    for key in ('source', 'plugin_name', 'plugin_id', 'resource_name', 'icon_file',
                 'plugin_directory', 'overwrite', 'export_mode'):
       self[key].add_event_listener('value-changed', self.on_change)
     self['get_plugin_id'].add_event_listener('click', self.on_get_plugin_id)
@@ -743,6 +743,16 @@ class PrototypeConverter(nr.c4d.ui.Component):
     self['icon_file'].set_helptext(cnv.icon_file)
     self['plugin_directory'].set_helptext(parent)
     self['clear_info'].enabled = cnv.has_settings()
+
+    color = COLOR_RED if not cnv.link else None
+    self['source'].previous_sibling.set_color(color)
+    color = COLOR_RED if not cnv.plugin_id.isdigit() else None
+    self['plugin_id'].parent.previous_sibling.set_color(color)
+
+    enable = True
+    if not cnv.link or not cnv.plugin_id.isdigit():
+      enable = False
+    self['create'].enabled = enable
 
   def on_create(self, button):
     cnv = self.get_converter()
