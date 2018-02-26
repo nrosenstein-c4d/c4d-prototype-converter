@@ -263,7 +263,7 @@ class Converter(object):
       self.directory = os.path.join(write_dir, 'plugins', dirname)
 
     if not self.icon_file:
-      self.icon_file = other.icon_file or res.path('res/icons/default-icon.tiff')
+      self.icon_file = other.icon_file or res.local('../icons/default-icon.tiff')
 
     if not self.plugin_id:
       self.plugin_id = other.plugin_id

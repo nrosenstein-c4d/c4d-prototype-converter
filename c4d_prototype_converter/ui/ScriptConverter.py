@@ -129,7 +129,7 @@ class Converter(object):
         else:
           self.icon_file = None
     if not self.icon_file:
-      self.icon_file = res.path('res/icons/default-icon.tiff')
+      self.icon_file = res.local('../icons/default-icon.tiff')
 
   def files(self):
     parent_dir = self.directory or self.plugin_name
@@ -244,6 +244,7 @@ class ScriptConverter(nr.c4d.ui.Component):
     self['filelist'].set_overwrite(cnv.overwrite)
     self['plugin_name'].set_helptext(cnv.plugin_name)
     self['plugin_help'].set_helptext(cnv.plugin_help)
+    self['icon'].set_helptext(cnv.icon_file)
     self['directory'].set_helptext(cnv.directory or '')
 
     if not cnv.plugin_id.isdigit():
