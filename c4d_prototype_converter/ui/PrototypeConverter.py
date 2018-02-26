@@ -9,10 +9,10 @@ import shutil
 import sys
 import traceback
 import webbrowser
+from nr.c4d.datastructures.hashdict import HashDict
 from .HelpMenu import HelpMenu
 from .FileList import FileList, COLOR_RED
 from ..utils import Node, makedirs
-from ..generics import HashDict
 from ..c4dutils import unicode_refreplace, get_subcontainer, has_subcontainer
 from ..little_jinja import little_jinja
 from .. import res, refactor

@@ -23,7 +23,7 @@
 import errno
 import os
 import weakref
-from .generics import Generic
+from nr.generic import Generic
 
 
 class nullable_ref(object):
@@ -64,13 +64,10 @@ def makedirs(path, raise_on_exists=False):
       raise
 
 
-class Node(object):
+class Node(Generic['data_cls']):
   """
   Generic tree node type.
   """
-
-  __metaclass__ = Generic
-  __generic_args__ = ['data_cls']
 
   def __init__(self, *args, **kwargs):
     if not self.__generic_bind__:

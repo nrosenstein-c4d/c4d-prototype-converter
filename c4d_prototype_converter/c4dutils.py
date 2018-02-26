@@ -26,15 +26,6 @@ import c4d
 try: from cStringIO import StringIO
 except ImportError: from StringIO import StringIO
 
-from . import generics
-
-
-@generics.specialize_hash_function(c4d.DescID)
-def hash_descid(x):
-  return hash(tuple(
-    (l.id, l.dtype, l.creator) for l in (x[i] for i in xrange(x.GetDepth()))
-  ))
-
 
 def unicode_refreplace(ustring):
   '''
