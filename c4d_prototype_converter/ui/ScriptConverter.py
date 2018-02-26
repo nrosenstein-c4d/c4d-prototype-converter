@@ -177,7 +177,7 @@ class ScriptConverter(nr.c4d.ui.Component):
     self.flush_children()
     self.load_xml_file('./ScriptConverter.xml')
     self.script_files = get_library_scripts()
-    for key in ('script', 'plugin_name', 'plugin_help', 'icon', 'directory'):
+    for key in ('script', 'plugin_name', 'plugin_help', 'plugin_id', 'icon', 'directory'):
       self[key].add_event_listener('value-changed', self.on_change)
     self['script'].pack(nr.c4d.ui.Item(delegate=self._fill_script_combobox))
     self['create'].add_event_listener('click', self.on_create)
@@ -206,14 +206,30 @@ class ScriptConverter(nr.c4d.ui.Component):
     )
 
   def on_change(self, widget):
+    visible = (self['script'].active_index == 0)
+    item = self['script_file']
+    item.visible = visible
+    item.previous_sibling.visible = visible
+
     cnv = self.get_converter()
     cnv.autofill()
     files = cnv.files()
     parent = os.path.dirname(files.pop('directory'))
+    enable_create = True
+
     self['filelist'].set_files(files.values(), parent)
     self['plugin_name'].set_helptext(cnv.plugin_name)
     self['plugin_help'].set_helptext(cnv.plugin_help)
     self['directory'].set_helptext(cnv.directory or '')
+
+    if not cnv.plugin_id.isdigit():
+      enable_create = enable_create and self['plugin_id'].enabled
+      color = c4d.Vector(1.0, 0.3, 0.3)
+    else:
+      color = None
+    self['plugin_id'].parent.previous_sibling.set_color(color)
+
+    self['create'].enabled = enable_create
 
   def on_create(self, button):
     cnv = self.get_converter()

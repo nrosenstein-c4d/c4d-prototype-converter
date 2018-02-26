@@ -10,7 +10,7 @@
           <Item text="Select File..." ident="select_file"/>
           <Separator/>
         </Combobox>
-        <Text text="" id="script_file_text"/>
+        <Text text=""/>
         <FileSelector type="load" id="script_file"/>
         <Text text="Plugin Name"/>
         <Input id="plugin_name" type="string" layout="fill-x,middle"/>
