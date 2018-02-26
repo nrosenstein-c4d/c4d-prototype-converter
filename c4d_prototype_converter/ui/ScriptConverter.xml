@@ -1,5 +1,8 @@
 <Group>
   <MenuGroup>
+    <MenuGroup name="File">
+      <MenuItem plugin="IDM_CM_CLOSEWINDOW"/>
+    </MenuGroup>
     <HelpMenu/>
   </MenuGroup>
   <Group borderspace="6,6,6,6" cols="1">
