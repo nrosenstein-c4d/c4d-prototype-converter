@@ -60,7 +60,7 @@ class {{ plugin_class }}(c4d.plugins.{{ plugin_type }}Data):
 
   PLUGIN_ID = {{ plugin_id }}
   PLUGIN_NAME = {{ repr(plugin_name) }}
-  PLUGIN_INFO = {{ plugin_info }} {%- if plugin_type == 'Tag' %}| c4d.TAG_VISIBLE{% endif %}
+  PLUGIN_INFO = {{ plugin_info or '0' }} {%- if plugin_type == 'Tag' %}| c4d.TAG_VISIBLE{% endif %}
   PLUGIN_DESC = {{ repr(plugin_desc) }}
   PLUGIN_ICON = {{ 'load_bitmap({!r})'.format(plugin_icon) if plugin_icon else 'None' }}
   PLUGIN_DISKLEVEL = 0
