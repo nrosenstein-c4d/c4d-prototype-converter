@@ -10,7 +10,7 @@ to a plugin.
     <th colspan="2" align="left">Script Converter</th>
   </tr>
   <tr>
-    <td><img src="https://i.imgur.com/XgSe0re.png" width="auto"></td>
+    <td><img src="https://i.imgur.com/RqgwueB.png" width="auto"></td>
     <td>
 
 This tool converts a Cinema 4D Python Script to a `CommandData` plugin.
@@ -27,7 +27,7 @@ Scripts you convert with this tool should have a `main()` function.
     <th colspan="2" align="left">Prototype Converter</th>
   </tr>
   <tr>
-    <td><img src="https://i.imgur.com/zNdGmv6.png" width="auto"></td>
+    <td><img src="https://i.imgur.com/GEdBq6Z.png" width="auto"></td>
     <td>
 
 This tool converts a Cinema 4D Python Generator or Expression Tag to a
