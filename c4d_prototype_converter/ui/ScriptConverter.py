@@ -280,4 +280,5 @@ class ScriptConverter(nr.c4d.ui.Component):
 
 window = nr.c4d.ui.DialogWindow(ScriptConverter(), title='Script Converter')
 command = nr.c4d.ui.DialogOpenerCommand(ID_SCRIPT_CONVERTER, window)
-command.Register('Script Converter...', c4d.PLUGINFLAG_HIDE)
+command.Register('Script Converter...', c4d.PLUGINFLAG_HIDE,
+  icon=res.bitmap(res.local('../icons/script_converter.png')))
