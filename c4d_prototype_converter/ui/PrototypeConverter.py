@@ -10,6 +10,7 @@ import sys
 import traceback
 import webbrowser
 from nr.c4d.datastructures.hashdict import HashDict
+import nr.c4d.utils  # Enables c4d.DescID specialization for HashDict
 from .HelpMenu import HelpMenu
 from .FileList import FileList, COLOR_RED
 from ..utils import Node, makedirs
