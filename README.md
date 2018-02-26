@@ -38,6 +38,8 @@ This tool converts a Cinema 4D Python Generator or Expression Tag to a
 * Converts UserData to description resource files
 * Converts `main()` and `message()` functions in your Python code to the
   respective plugin member method (`GetVirtualObjects()`, `Execute()`, `Message()`)
+* Replaces uses of `op[c4d.ID_USERDATA,X]` with the automatically generated
+  resource symbols
 
     </td>
   </tr>
@@ -75,8 +77,6 @@ This tool converts a Cinema 4D Python Generator or Expression Tag to a
 
 * Report possible errors during conversion (eg. referencing the variables
   `doc` or `op` in global functions without previously declaring them)
-* Automatically replace references to `op[c4d.ID_USERDATA, X]` syntax with
-  the automatically generated resource symbol
 
 ### Acknowledgements
 
