@@ -177,7 +177,8 @@ class ScriptConverter(nr.c4d.ui.Component):
     self.flush_children()
     self.load_xml_file('./ScriptConverter.xml')
     self.script_files = get_library_scripts()
-    for key in ('script', 'plugin_name', 'plugin_help', 'plugin_id', 'icon', 'directory'):
+    for key in ('script', 'script_file', 'plugin_name', 'plugin_help',
+                'plugin_id', 'icon', 'directory'):
       self[key].add_event_listener('value-changed', self.on_change)
     self['script'].pack(nr.c4d.ui.Item(delegate=self._fill_script_combobox))
     self['create'].add_event_listener('click', self.on_create)
