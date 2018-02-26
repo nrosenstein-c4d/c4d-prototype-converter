@@ -688,9 +688,9 @@ class PrototypeConverter(nr.c4d.ui.Component):
     self.on_change(None)
 
   def get_converter(self):
-    export_mode = self['export_mode'].active_item.ident
-    symbol_mode = self['symbol_mode'].active_item.ident
-    indent_mode = self['indent_mode'].active_item.ident
+    export_mode = self['export_mode'].active_item.ident.encode()
+    symbol_mode = self['symbol_mode'].active_item.ident.encode()
+    indent_mode = self['indent_mode'].active_item.ident.encode()
     indent = {'tab': '\t', '2space': '  ', '4space': '    '}[indent_mode]
     return Converter(
       link = self['source'].get_link(),
@@ -712,8 +712,8 @@ class PrototypeConverter(nr.c4d.ui.Component):
     cnv.autofill()
     files = cnv.files()
     parent = os.path.dirname(files.pop('directory'))
-    files = files.values()
-    self['filelist'].set_files(files, parent)
+    self['filelist'].set_files(files, parent, cnv.optional_file_ids())
+    self['filelist'].set_overwrite(cnv.overwrite)
     self['plugin_name'].set_helptext(cnv.plugin_name)
     self['resource_name'].set_helptext(cnv.resource_name)
     self['symbol_prefix'].set_helptext(cnv.symbol_prefix)

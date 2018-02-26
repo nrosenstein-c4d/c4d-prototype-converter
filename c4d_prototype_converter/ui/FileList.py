@@ -62,6 +62,11 @@ def file_tree(items, parent=None, flat=False, key=None):
     return list(roots)
 
 
+COLOR_BLUE = c4d.Vector(0.5, 0.6, 0.9)
+COLOR_RED = c4d.Vector(0.9, 0.3, 0.3)
+COLOR_YELLOW = c4d.Vector(0.9, 0.8, 0.6)
+
+
 class FileList(BaseWidget):
   """
   Shows a list of files in a tree with the single highest directory first.
@@ -73,12 +78,20 @@ class FileList(BaseWidget):
   def __init__(self, layout_flags='left,fit-y', id=None):
     super(FileList, self).__init__(id)
     self.layout_flags = layout_flags
+    self._parent_path = None
     self._flat_nodes = []
+    self._optional_file_ids = set()
+    self._overwrite = False
 
-  def set_files(self, files, parent):
-    files = sorted(files, key=lambda x: x.lower())
-    self._flat_nodes = file_tree(files, parent=parent, flat=True)
+  def set_files(self, files, parent, optional_file_ids):
+    files = sorted(files.items(), key=lambda x: x[1].lower())
+    self._parent_path = parent
+    self._flat_nodes = file_tree(files, parent=parent, flat=True, key=lambda x: x[1])
+    self._optional_file_ids = set(optional_file_ids)
     self.layout_changed()
+
+  def set_overwrite(self, overwrite):
+    self._overwrite = overwrite
 
   def render(self, dialog):
     layout_flags = get_layout_flags(self.layout_flags)
@@ -90,13 +103,13 @@ class FileList(BaseWidget):
         name += '/'
       widget_id = self.alloc_id()
       dialog.AddStaticText(widget_id, c4d.BFH_LEFT, name=name)
-      #full_path = os.path.join(parent, node['path'])
-      #if not node['isdir'] and os.path.isfile(full_path):
-        #if node['data'][0] in cnv.optional_file_ids():
-        #  color = COLOR_BLUE
-        #elif cnv.overwrite:
-        #  color = COLOR_YELLOW
-        #else:
-        #  color = COLOR_RED
-        #dialog.SetColor(widget_id, c4d.COLOR_TEXT, color)
+      full_path = os.path.join(self._parent_path, node['path'])
+      if not node['isdir'] and os.path.isfile(full_path):
+        if node['data'][0] in self._optional_file_ids:
+          color = COLOR_BLUE
+        elif self._overwrite:
+          color = COLOR_YELLOW
+        else:
+          color = COLOR_RED
+        dialog.set_color(widget_id, c4d.COLOR_TEXT, color)
     dialog.GroupEnd()

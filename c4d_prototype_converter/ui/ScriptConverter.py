@@ -218,7 +218,8 @@ class ScriptConverter(nr.c4d.ui.Component):
     parent = os.path.dirname(files.pop('directory'))
     enable_create = True
 
-    self['filelist'].set_files(files.values(), parent)
+    self['filelist'].set_files(files, parent, set())
+    self['filelist'].set_overwrite(cnv.overwrite)
     self['plugin_name'].set_helptext(cnv.plugin_name)
     self['plugin_help'].set_helptext(cnv.plugin_help)
     self['directory'].set_helptext(cnv.directory or '')
