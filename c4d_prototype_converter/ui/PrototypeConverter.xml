@@ -6,7 +6,27 @@
   <Group layout="fill-x,fit" cols="2">
     <!-- Left part of the dialog that shows the export and plugin options. -->
     <Group layout="fill-x,top" cols="1">
-      <Group borderspace="6,6,6,6" layout="fill-x,top" title="Export" cols="2" border="thin_in">
+      <Group layout="fill-x,top" cols="2">
+        <Text text="Source *"/>
+        <Group layout="fill-x,middle">
+          <LinkBox id="source"/>
+          <Button id="clear_info" text="Clear Info"/>
+        </Group>
+        <Text text="Plugin Name"/>
+        <Input id="plugin_name" type="string" layout="fit-x,middle"/>
+        <Text text="Plugin ID *"/>
+        <Group layout="fill-x,middle">
+          <Input id="plugin_id" type="string" minw="120"/>
+          <Button id="get_plugin_id" text="Get Plugin ID"/>
+        </Group>
+        <Text text="Resource Name"/>
+        <Input id="resource_name" type="string" layout="fit-x,middle"/>
+        <Text text="Symbol Prefix"/>
+        <Input id="symbol_prefix" type="string" layout="fit-x,middle"/>
+        <Text text="Icon"/>
+        <FileSelector id="icon_file" type="load"/>
+        <Text text="Plugin Directory"/>
+        <FileSelector id="plugin_directory" type="directory"/>
         <Text text="Mode"/>
         <Combobox id="export_mode">
           <Item text="Resource Files + Plugin Stub" ident="all"/>
@@ -25,36 +45,18 @@
           <Item text="Tab" ident="tab"/>
         </Quicktab>
       </Group>
-      <Group borderspace="6,6,6,6" layout="fill-x,top" title="Plugin" cols="2" border="thin_in">
-        <Text text="Source *"/>
-        <LinkBox id="source"/>
-        <Text text="Plugin Name"/>
-        <Input id="plugin_name" type="string" layout="fit-x,middle"/>
-        <Text text="Plugin ID *"/>
-        <Group layout="fill-x,middle">
-          <Input id="plugin_id" type="string" minw="120"/>
-          <Button id="get_plugin_id" text="Get Plugin ID"/>
-        </Group>
-        <Text text="Resource Name"/>
-        <Input id="resource_name" type="string" layout="fit-x,middle"/>
-        <Text text="Symbol Prefix"/>
-        <Input id="symbol_prefix" type="string" layout="fit-x,middle"/>
-        <Text text="Icon"/>
-        <FileSelector id="icon_file" type="load"/>
-        <Text text="Plugin Directory"/>
-        <FileSelector id="plugin_directory" type="directory"/>
-      </Group>
     </Group>
 
     <!-- Right part that shows the file list. -->
-    <Group borderspace="6,6,6,6" layout="fit-x,fit-y" cols="1" title="Overwrite" id="overwrite" checkbox="true" border="thin_in">
+    <Group borderspace="6,6,6,6" layout="fit-x,fit-y" cols="1" title="Overwrite" id="overwrite" checkbox="true" border="round">
       <FileList id="filelist"/>
     </Group>
   </Group>
+  <Separator/>
   <Group layout="fill-x,top" rows="1">
-    <Button id="create" text="Create"/>
     <Spacer/>
-    <Button id="clear_info" text="Clear Info"/>
+    <Button id="create" text="Create"/>
     <Button id="cancel" text="Cancel" layout="right"/>
+    <Spacer/>
   </Group>
 </Group>

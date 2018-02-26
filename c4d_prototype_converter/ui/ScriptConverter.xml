@@ -5,7 +5,7 @@
   <Group borderspace="6,6,6,6" cols="1">
     <Group rows="1">
       <Group cols="2">
-        <Text text="Script"/>
+        <Text text="Script *"/>
         <Combobox id="script">
           <Item text="Select File..." ident="select_file"/>
           <Separator/>
@@ -32,14 +32,16 @@
           <Item text="Tab" ident="tab"/>
         </Quicktab>
       </Group>
-      <Group id="overwrite" layout="fit" borderspace="4,4,4,4" title="Overwrite" border="thin_in" checkbox='true'>
+      <Group id="overwrite" layout="fit" borderspace="4,4,4,8" title="Overwrite" border="round" checkbox='true'>
         <FileList id="filelist"/>
       </Group>
     </Group>
+    <Separator/>
     <Group rows="1">
-      <Button id="create" text="Create"/>
       <Spacer/>
+      <Button id="create" text="Create"/>
       <Button id="cancel" text="Cancel"/>
+      <Spacer/>
     </Group>
   </Group>
 </Group>

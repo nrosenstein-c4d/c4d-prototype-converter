@@ -8,7 +8,7 @@ import shutil
 import traceback
 import webbrowser
 from .HelpMenu import HelpMenu
-from .FileList import FileList
+from .FileList import FileList, COLOR_RED
 from ..little_jinja import little_jinja
 from ..utils import makedirs
 from .. import res, refactor
@@ -247,11 +247,18 @@ class ScriptConverter(nr.c4d.ui.Component):
     self['directory'].set_helptext(cnv.directory or '')
 
     if not cnv.plugin_id.isdigit():
-      enable_create = enable_create and self['plugin_id'].enabled
-      color = c4d.Vector(1.0, 0.3, 0.3)
+      enable_create = False
+      color = COLOR_RED
     else:
       color = None
     self['plugin_id'].parent.previous_sibling.set_color(color)
+
+    if not cnv.script_file:
+      enable_create = False
+      color = COLOR_RED
+    else:
+      color = None
+    self['script'].previous_sibling.set_color(color)
 
     self['create'].enabled = enable_create
 

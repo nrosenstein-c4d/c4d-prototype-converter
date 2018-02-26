@@ -745,7 +745,7 @@ class PrototypeConverter(nr.c4d.ui.Component):
     self['clear_info'].enabled = cnv.has_settings()
 
     color = COLOR_RED if not cnv.link else None
-    self['source'].previous_sibling.set_color(color)
+    self['source'].parent.previous_sibling.set_color(color)
     color = COLOR_RED if not cnv.plugin_id.isdigit() else None
     self['plugin_id'].parent.previous_sibling.set_color(color)
 
