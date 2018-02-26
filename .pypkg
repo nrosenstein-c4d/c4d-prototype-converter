@@ -1,0 +1,11 @@
+{
+  "output": "./lib-{target}.egg",
+  "targets": {
+    "2-6": "py -2.6",
+    "2-7": "py -2.7"
+  },
+  "include": [
+    "lib/py-nr/nr",
+    "lib/py-nr.c4d/nr"
+  ]
+}

@@ -35,9 +35,20 @@ ra9tGjpZvN/wAj+NGJ'
 exec(z.decompress(b.b64decode(blob)), vars(m)); _localimport=m;localimport=getattr(m,"localimport")
 del blob, b, t, z, m;
 
-import os
 
-with localimport(['.', 'lib']) as _importer:
+import os
+import sys
+
+project_dir = os.path.dirname(__file__)
+libegg = os.path.join(project_dir, 'lib-{}.egg'.format(sys.version[:3].replace('.', '-')))
+libdir = os.path.join(project_dir, 'lib')
+
+if os.path.isdir(libdir):
+  path = ['.', libdir]
+else:
+  path = ['.', libegg]
+
+with localimport(path, do_eggs=False) as importer:
   from c4d_prototype_converter import main, res
   res.__res__ = __res__
   res.plugin_dir = os.path.dirname(__file__)
