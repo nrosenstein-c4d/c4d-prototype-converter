@@ -26,7 +26,7 @@
         <Text text="Plugin Directory"/>
         <FileSelector id="directory" type="directory"/>
       </Group>
-      <Group layout="fit" borderspace="4,4,4,4" title="Files" border="thin_in">
+      <Group id="overwrite" layout="fit" borderspace="4,4,4,4" title="Overwrite" border="thin_in" checkbox='true'>
         <FileList id="filelist"/>
       </Group>
     </Group>

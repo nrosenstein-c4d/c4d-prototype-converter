@@ -23,8 +23,6 @@
         <Item text="2 Spaces" ident="2space"/>
         <Item text="4 Spaces" ident="4space"/>
       </Quicktab>
-      <Text text="Overwrite"/>
-      <Checkbox id="overwrite"/>
     </Group>
     <Group borderspace="6,6,6,6" layout="fill-x,top" title="Plugin" cols="2" border="thin_in">
       <Text text="Source *"/>
@@ -48,7 +46,7 @@
   </Group>
 
   <!-- Right part that shows the file list. -->
-  <Group borderspace="6,6,6,6" layout="fit-x,fit-y" cols="1" title="Files" border="thin_in">
+  <Group borderspace="6,6,6,6" layout="fit-x,fit-y" cols="1" title="Overwrite" id="overwrite" checkbox="true" border="thin_in">
     <FileList id="filelist"/>
   </Group>
 
