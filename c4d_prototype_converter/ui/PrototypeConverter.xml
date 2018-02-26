@@ -1,5 +1,10 @@
 <Group borderspace="6,6,6,6" cols="1">
   <MenuGroup>
+    <MenuGroup name="File">
+      <MenuItem id="clear_info" name="Clear Settings"/>
+      <Separator/>
+      <MenuItem plugin="IDM_CM_CLOSEWINDOW"/>
+    </MenuGroup>
     <HelpMenu/>
   </MenuGroup>
 
@@ -8,10 +13,7 @@
     <Group layout="fill-x,top" cols="1">
       <Group layout="fill-x,top" cols="2">
         <Text text="Source *"/>
-        <Group layout="fill-x,middle">
-          <LinkBox id="source"/>
-          <Button id="clear_info" text="Clear Info"/>
-        </Group>
+        <LinkBox id="source"/>
         <Text text="Plugin Name"/>
         <Input id="plugin_name" type="string" layout="fit-x,middle"/>
         <Text text="Plugin ID *"/>
