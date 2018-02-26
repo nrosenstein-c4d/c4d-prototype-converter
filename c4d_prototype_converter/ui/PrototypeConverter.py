@@ -204,8 +204,8 @@ class Converter(object):
   be generated.
   """
 
-  def __init__(self, link, plugin_name, plugin_id, resource_name,
-               symbol_prefix, icon_file, directory, indent='  ',
+  def __init__(self, link, plugin_name='', plugin_id='', resource_name='',
+               symbol_prefix='', icon_file='', directory='', indent='  ',
                write_plugin_stub=True, write_resources=True,
                symbol_mode='c4ddev', overwrite='none'):
     assert symbol_mode in ('c4d', 'c4ddev'), symbol_mode
@@ -236,21 +236,37 @@ class Converter(object):
     return {}
 
   def autofill(self, default_plugin_name='My Plugin'):
+    other = Converter(self.link)
+    if other.link: other.read_from_link()
+
     if not self.plugin_name:
-      self.plugin_name = (self.link.GetName() if self.link else '')
+      self.plugin_name = other.plugin_name or (self.link.GetName() if self.link else '')
     if not self.plugin_name:
       self.plugin_name = default_plugin_name
+
+    if not self.resource_name:
+      self.resource_name = other.resource_name
     if not self.resource_name:
       self.resource_name = re.sub('[^\w\d]+', '', self.plugin_name).lower()
       self.resource_name = self.plugin_type_info().get('resprefix', '') + self.resource_name
+
+    if not self.symbol_prefix:
+      self.symbol_prefix = other.symbol_prefix
     if not self.symbol_prefix:
       self.symbol_prefix = re.sub('[^\w\d]+', '_', self.plugin_name).rstrip('_').upper() + '_'
+
+    if not self.directory:
+      self.directory = other.directory
     if not self.directory:
       write_dir = c4d.storage.GeGetC4DPath(c4d.C4D_PATH_STARTUPWRITE)
       dirname = re.sub('[^\w\d]+', '-', self.plugin_name).lower()
       self.directory = os.path.join(write_dir, 'plugins', dirname)
+
     if not self.icon_file:
-      self.icon_file = res.path('res/icons/default-icon.tiff')
+      self.icon_file = other.icon_file or res.path('res/icons/default-icon.tiff')
+
+    if not self.plugin_id:
+      self.plugin_id = other.plugin_id
 
   def files(self):
     f = lambda s: s.format(**sys._getframe(1).f_locals)
@@ -715,8 +731,10 @@ class PrototypeConverter(nr.c4d.ui.Component):
     self['filelist'].set_files(files, parent, cnv.optional_file_ids())
     self['filelist'].set_overwrite(cnv.overwrite)
     self['plugin_name'].set_helptext(cnv.plugin_name)
+    self['plugin_id'].set_helptext(cnv.plugin_id)
     self['resource_name'].set_helptext(cnv.resource_name)
     self['symbol_prefix'].set_helptext(cnv.symbol_prefix)
+    self['icon_file'].set_helptext(cnv.icon_file)
     self['plugin_directory'].set_helptext(parent)
 
   def on_create(self, button):
