@@ -219,12 +219,15 @@ def little_jinja(template_string, context):
     elif node.type == 'for':
       sub_context = context.copy()
       for index, item in enumerate(eval(node.data['expr'], context)):
-        if len(item) != len(node.data['varnames']):
-          raise ValueError('unpacking of "{}" failed at index {}'
-            .format(node.data['expr'], index))
         sub_context['loop_index'] = index
-        for varname, value in zip(node.data['varnames'], item):
-          sub_context[varname.strip()] = value
+        if len(node.data['varnames']) == 1:
+          sub_context[node.data['varnames'][0].strip()] = item
+        else:
+          if len(item) != len(node.data['varnames']):
+            raise ValueError('unpacking of "{}" failed at index {}'
+              .format(node.data['expr'], index))
+          for varname, value in zip(node.data['varnames'], item):
+            sub_context[varname.strip()] = value
         for child in node.sub:
           render(child, sub_context)
     else:
