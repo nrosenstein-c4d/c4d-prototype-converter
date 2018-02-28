@@ -141,6 +141,7 @@ class SymbolMap(object):
     self.prefix = prefix
 
   def translate_name(self, name, add_prefix=True, unique=True):
+    name = name.replace('+', 'P').replace('-', 'N')
     result = re.sub('[^\w\d_]+', '_', name).upper().strip('_')
     if add_prefix:
       result = self.prefix + result
@@ -442,9 +443,14 @@ class Converter(object):
 
     children = node['bc'].GetContainerInstance(c4d.DESC_CYCLE)
     if children:
+      cycle_symbols = []
       for value, name in children:
         sym = symbol_map.get_cycle_symbol(node, name)
         fp.write(self.indent * 2 + '{} = {},\n'.format(sym, value))
+        cycle_symbols.append((sym, value))
+    else:
+      cycle_symbols = None
+    node['cycle_symbols'] = cycle_symbols
 
     return sym
 

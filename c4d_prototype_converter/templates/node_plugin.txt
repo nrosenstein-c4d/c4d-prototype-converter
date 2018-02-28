@@ -36,6 +36,9 @@ res = c4d
 class res(object):
   {%- for node, did, bc in parameters -%}
   {{ node['symbol'][0] }} = {{ node['symbol'][1] }}
+  {%- for item in (node['cycle_symbols'] or ()) -%}
+  {{ item[0] }} = {{ item[1] }}
+  {%- endfor -%}
   {%- endfor -%}
 res = res()
 
