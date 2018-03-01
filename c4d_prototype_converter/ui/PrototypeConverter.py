@@ -712,6 +712,7 @@ class PrototypeConverter(nr.c4d.ui.Component):
     super(PrototypeConverter, self).render(dialog)
 
   def init_values(self, dialog):
+    super(PrototypeConverter, self).init_values(dialog)
     doc = c4d.documents.GetActiveDocument()
     self['source'].set_link(doc.GetActiveObject())
     self.on_change(None)

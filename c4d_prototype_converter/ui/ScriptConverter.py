@@ -208,6 +208,7 @@ class ScriptConverter(nr.c4d.ui.Component):
       box.add(name)
 
   def init_values(self, dialog):
+    super(ScriptConverter, self).init_values(dialog)
     self.on_change(None)
 
   def get_converter(self):

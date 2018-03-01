@@ -36,12 +36,12 @@
           <Item text="Plugin Stub" ident="plugin"/>
         </Combobox>
         <Text text="Resource Symbols"/>
-        <Quicktab id="symbol_mode">
+        <Quicktab id="symbol_mode" default="c4ddev">
           <Item text="Cinema 4D" ident="c4d"/>
           <Item text="C4DDev" ident="c4ddev"/>
         </Quicktab>
         <Text text="Indentation"/>
-        <Quicktab id="indent_mode">
+        <Quicktab id="indent_mode" default="4space">
           <Item text="2 Spaces" ident="2space"/>
           <Item text="4 Spaces" ident="4space"/>
           <Item text="Tab" ident="tab"/>
