@@ -51,6 +51,7 @@ def refactor_command_script(code):
 
   if exec_func:
     member_code = exec_func
+    code = refactor.strip_main_check(code)
   else:
     lines = ['def Execute(self, doc):']
     for line in code.split('\n'):

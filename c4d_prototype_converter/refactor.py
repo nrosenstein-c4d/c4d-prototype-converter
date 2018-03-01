@@ -27,6 +27,7 @@ Python Plugins.
 
 from lib2to3.fixer_base import BaseFix
 from lib2to3.fixer_util import Leaf, Node, BlankLine, find_indentation
+from lib2to3.patcomp import PatternCompiler
 from lib2to3.pgen2 import token
 from lib2to3.pgen2.parse import ParseError
 from lib2to3.pygram import python_symbols
@@ -289,6 +290,31 @@ class FixUserDataAccess(DelayBindBaseFix):
     return None
 
 
+class FixStripMainCheck(DelayBindBaseFix):
+
+  PATTERN = """
+    if_stmt<
+      'if' comparison< '__name__' '==' '\\'__main__\\'' > ':' any*
+    >
+    |
+    if_stmt<
+      'if' comparison< '__name__' '==' '"__main__"' > ':' any*
+    >
+  """
+
+  PATTERN_MAIN = PatternCompiler().compile_pattern('''
+    power< 'main' trailer< '(' ')' > >
+  ''')
+
+  def transform(self, node, result):
+    suite = next((x for x in node.children if x.type == python_symbols.suite), None)
+    if not suite: return
+    statements = [x for x in suite.children if x.type == python_symbols.simple_stmt]
+    if len(statements) != 1: return
+    if not self.PATTERN_MAIN.match(statements[0].children[0], {}): return
+    return BlankLine()
+
+
 def strip_empty_lines(string):
   lines = []
   for line in string.split('\n'):
@@ -316,6 +342,10 @@ def split_and_refactor_global_function(code, func_name, new_func_name=None,
   code = str(refactor_string([fixer], code))
   functions = '\n'.join(strip_empty_lines(str(x)) for x in fixer.results)
   return strip_empty_lines(code), functions
+
+
+def strip_main_check(code):
+  return refactor_string([FixStripMainCheck()], code)
 
 
 def fix_userdata_access(code, subfun):
