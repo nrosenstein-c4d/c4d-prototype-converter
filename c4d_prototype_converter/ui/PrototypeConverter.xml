@@ -58,7 +58,5 @@
   <Group layout="fill-x,top" rows="1">
     <Spacer/>
     <Button id="create" text="Create"/>
-    <Button id="cancel" text="Cancel" layout="right"/>
-    <Spacer/>
   </Group>
 </Group>

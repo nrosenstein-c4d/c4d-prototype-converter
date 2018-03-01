@@ -43,8 +43,6 @@
     <Group rows="1">
       <Spacer/>
       <Button id="create" text="Create"/>
-      <Button id="cancel" text="Cancel"/>
-      <Spacer/>
     </Group>
   </Group>
 </Group>
