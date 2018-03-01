@@ -29,7 +29,7 @@
         <Text text="Plugin Directory"/>
         <FileSelector id="directory" type="directory"/>
         <Text text="Indentation"/>
-        <Quicktab id="indent_mode" default="4space">
+        <Quicktab id="indent_mode" value="4space">
           <Item text="2 Spaces" ident="2space"/>
           <Item text="4 Spaces" ident="4space"/>
           <Item text="Tab" ident="tab"/>
