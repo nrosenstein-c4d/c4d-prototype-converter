@@ -526,9 +526,10 @@ class Converter(object):
         # RadioButtons CustomGUI.
         elif bc[c4d.DESC_CUSTOMGUI] == 1019603:
           symbol_map.add_hardcoded_description(node, 'c4d.DESC_CUSTOMGUI', 1019603)
+        elif bc[c4d.DESC_CUSTOMGUI] in (c4d.CUSTOMGUI_REAL, c4d.CUSTOMGUI_LONG, c4d.CUSTOMGUI_CYCLE):
+          pass  # Default
         else:
           print('Note: unknown customgui:', bc[c4d.DESC_NAME], bc[c4d.DESC_CUSTOMGUI])
-        # TODO: Quick Tab/Radio Button customgui
 
         if not has_cycle:
           if bc.GetType(c4d.DESC_MIN) == dtype and not is_minvalue(bc[c4d.DESC_MIN]):
