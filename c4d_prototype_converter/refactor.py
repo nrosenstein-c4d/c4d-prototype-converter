@@ -25,6 +25,7 @@ Cinema 4D Script Manager, Python Generator or Expression Tags to actual
 Python Plugins.
 """
 
+from __future__ import print_function
 from lib2to3.fixer_base import BaseFix
 from lib2to3.fixer_util import Leaf, Node, BlankLine, find_indentation
 from lib2to3.patcomp import PatternCompiler
@@ -147,13 +148,25 @@ class FixIndentation(DelayBindBaseFix):
       return True
     return False
 
+  def _update_prefix(self, prefix, indent_width, add_indent=True):
+    indent = self.new_indent * indent_width
+    prefix_lines = [x.strip() for x in prefix.split('\n')[:-1]]
+    prefix_lines = [(indent + x) if x else '' for x in prefix_lines]
+    if add_indent:
+      prefix_lines.append(indent)
+    else:
+      prefix_lines.append('')
+    return '\n'.join(prefix_lines)
+
   def transform(self, node, results):
     if node.type == token.INDENT:
       self.line = node.lineno
       self.indents.append(len(node.value))
       new_indent = self.new_indent * len(self.indents)
-      if node.value != new_indent:
+      new_prefix = self._update_prefix(node.prefix, len(self.indents), False)
+      if node.value != new_indent or new_prefix != node.prefix:
         node.value = new_indent
+        node.prefix = new_prefix
         return node
     elif node.type == token.DEDENT:
       self.line = node.lineno
@@ -170,9 +183,7 @@ class FixIndentation(DelayBindBaseFix):
           # line of the prefix. So we remove the last
           # line of the prefix and add the correct
           # indententation as a new last line.
-          prefix_lines = node.prefix.split('\n')[:-1]
-          prefix_lines.append(self.new_indent * len(self.indents))
-          new_prefix = '\n'.join(prefix_lines)
+          new_prefix = self._update_prefix(node.prefix, len(self.indents))
           if node.prefix != new_prefix:
             node.prefix = new_prefix
             # Return the modified node:
@@ -193,10 +204,7 @@ class FixIndentation(DelayBindBaseFix):
         # of the prefix, as during DEDENTS. Remove
         # the old indentation and add the correct
         # indententation as a new last line.
-        prefix_lines = node.prefix.split('\n')[:-1]
-        indent_depth = len(self.indents) + len(self.compounds)
-        prefix_lines.append(self.new_indent * indent_depth)
-        new_prefix = '\n'.join(prefix_lines)
+        new_prefix = self._update_prefix(node.prefix, len(self.indents) + len(self.compounds))
         if node.prefix != new_prefix:
           node.prefix = new_prefix
           # Return the modified node:
