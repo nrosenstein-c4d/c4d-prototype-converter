@@ -208,7 +208,7 @@ class Converter(object):
 
   def __init__(self, link, plugin_name='', plugin_id='', resource_name='',
                symbol_prefix='', icon_file='', directory='', indent='  ',
-               write_plugin_stub=True, write_resources=True,
+               write_plugin_stub=True, write_resources=True, write_readme=True,
                symbol_mode='c4ddev', overwrite='none'):
     assert symbol_mode in ('c4d', 'c4ddev'), symbol_mode
     self.link = link
@@ -221,6 +221,7 @@ class Converter(object):
     self.indent = indent
     self.write_plugin_stub = write_plugin_stub
     self.write_resources = write_resources
+    self.write_readme = write_readme
     self.symbol_mode = symbol_mode
     self.overwrite = overwrite
 
@@ -286,6 +287,8 @@ class Converter(object):
       })
     if self.write_plugin_stub and plugin_type_info.get('plugintype'):
       result['plugin'] = j(f('{plugin_filename}.pyp'))
+    if self.write_readme:
+      result['readme'] = j('README.md')
     if self.icon_file:
       suffix = os.path.splitext(self.icon_file)[1]
       result['icon'] = j('res', 'icons', f('{self.plugin_name}{suffix}'))
@@ -423,6 +426,17 @@ class Converter(object):
       code = refactor.indentation(code, self.indent)
       with open(files['plugin'], 'w') as fp:
         fp.write(code)
+    else:
+      code_parts = {}
+
+    if 'readme' in files and (self.overwrite or not os.path.isfile(files['readme'])):
+      docstring = (code_parts.get('docstring') or '').strip()
+      if docstring.startswith('"'): docstring = docstring.strip('"')
+      elif docstring.startswith("'"): docstring = docstring.strip("'")
+      with open(files['readme'], 'w') as fp:
+        fp.write('# {0}\n\n'.format(self.plugin_name))
+        fp.write(docstring)
+        fp.write('\n')
 
     if self.icon_file and self.icon_file != files['icon']:
       makedirs(os.path.dirname(files['icon']))
@@ -719,7 +733,6 @@ class PrototypeConverter(nr.c4d.ui.Component):
     self.on_change(None)
 
   def get_converter(self):
-    export_mode = self['export_mode'].active_item.ident.encode()
     symbol_mode = self['symbol_mode'].active_item.ident.encode()
     indent_mode = self['indent_mode'].active_item.ident.encode()
     indent = {'tab': '\t', '2space': '  ', '4space': '    '}[indent_mode]
@@ -731,8 +744,9 @@ class PrototypeConverter(nr.c4d.ui.Component):
       symbol_prefix = self['symbol_prefix'].value,
       icon_file = self['icon_file'].value,
       directory = self['plugin_directory'].value,
-      write_plugin_stub = export_mode in ('all', 'plugin'),
-      write_resources = export_mode in ('all', 'res'),
+      write_plugin_stub = self['export_mode'].is_checked('plugin'),
+      write_resources = self['export_mode'].is_checked('res'),
+      write_readme = self['export_mode'].is_checked('readme'),
       symbol_mode = symbol_mode,
       overwrite = self['overwrite'].value,
       indent = indent

@@ -94,7 +94,8 @@ class Converter(object):
     return result
 
   def __init__(self, plugin_name='', plugin_help='', plugin_id='',
-      script_file='', icon_file='', directory='', indent='  ', overwrite=True):
+      script_file='', icon_file='', directory='', indent='  ',
+      write_readme=True, overwrite=True):
     self.plugin_name = plugin_name
     self.plugin_help = None
     self.plugin_id = plugin_id
@@ -102,6 +103,7 @@ class Converter(object):
     self.icon_file = icon_file
     self.directory = directory
     self.indent = indent
+    self.write_readme = write_readme
     self.overwrite = overwrite
 
   def autofill(self, default_plugin_name='My Plugin'):
@@ -142,6 +144,8 @@ class Converter(object):
     if self.icon_file:
       suffix = os.path.splitext(self.icon_file)[1]
       result['icon'] = os.path.join(parent_dir, 'res/icons/{0}{1}'.format(plugin_filename, suffix))
+    if self.write_readme:
+      result['readme'] = os.path.join(parent_dir, 'README.md')
     return result
 
   def create(self):
@@ -189,6 +193,13 @@ class Converter(object):
     with open(files['plugin'], 'w') as fp:
       fp.write(code)
 
+    if 'readme' in files and (self.overwrite or not os.path.isfile(files['readme'])):
+      docstring = code_parts.get('docstring', '').strip()
+      if docstring.startswith('"'): docstring = docstring.strip('"')
+      elif docstring.startswith("'"): docstring = docstring.strip("'")
+      with open(files['readme'], 'w') as fp:
+        fp.write('# {0}\n\n{1}\n'.format(self.plugin_name, docstring))
+
 
 class ScriptConverter(nr.c4d.ui.Component):
 
@@ -197,7 +208,7 @@ class ScriptConverter(nr.c4d.ui.Component):
     self.load_xml_file('./ScriptConverter.xml')
     self.script_files = get_library_scripts()
     for key in ('script', 'script_file', 'plugin_name', 'plugin_help',
-                'plugin_id', 'icon', 'directory', 'overwrite'):
+                'plugin_id', 'icon', 'directory', 'write_readme', 'overwrite'):
       self[key].add_event_listener('value-changed', self.on_change)
     self['script'].pack(nr.c4d.ui.Item(delegate=self._fill_script_combobox))
     self['create'].add_event_listener('click', self.on_create)
@@ -227,6 +238,7 @@ class ScriptConverter(nr.c4d.ui.Component):
       icon_file = self['icon'].value,
       directory = self['directory'].value,
       overwrite = self['overwrite'].value,
+      write_readme = self['write_readme'].value,
       indent = indent
     )
 
@@ -275,6 +287,8 @@ class ScriptConverter(nr.c4d.ui.Component):
       c4d.gui.MessageDialog(str(exc))
     else:
       c4d.storage.ShowInFinder(cnv.files()['directory'])
+    finally:
+      self.on_change(None)
 
   def on_get_plugin_id(self, button):
     webbrowser.open('http://www.plugincafe.com/forum/developer.asp')

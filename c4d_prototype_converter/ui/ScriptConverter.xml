@@ -34,6 +34,8 @@
           <Item text="4 Spaces" ident="4space"/>
           <Item text="Tab" ident="tab"/>
         </Quicktab>
+        <Text text=""/>
+        <Checkbox id="write_readme" text="Write Readme" value="true"/>
       </Group>
       <Group id="overwrite" layout="fit" borderspace="4,4,4,8" title="Overwrite" border="round" checkbox='true'>
         <FileList id="filelist"/>

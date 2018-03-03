@@ -29,19 +29,19 @@
         <FileSelector id="icon_file" type="load"/>
         <Text text="Plugin Directory"/>
         <FileSelector id="plugin_directory" type="directory"/>
-        <Text text="Mode"/>
-        <Combobox id="export_mode">
-          <Item text="Resource Files + Plugin Stub" ident="all"/>
+        <Text text="Output"/>
+        <Quicktab id="export_mode" value="*">
           <Item text="Resource Files" ident="res"/>
           <Item text="Plugin Stub" ident="plugin"/>
-        </Combobox>
+          <Item text="Readme" ident="readme"/>
+        </Quicktab>
         <Text text="Resource Symbols"/>
-        <Quicktab id="symbol_mode" value="c4ddev">
+        <Quicktab id="symbol_mode" multiselect="false" value="c4ddev">
           <Item text="Cinema 4D" ident="c4d"/>
           <Item text="C4DDev" ident="c4ddev"/>
         </Quicktab>
         <Text text="Indentation"/>
-        <Quicktab id="indent_mode" value="4space">
+        <Quicktab id="indent_mode" multiselect="false" value="4space">
           <Item text="2 Spaces" ident="2space"/>
           <Item text="4 Spaces" ident="4space"/>
           <Item text="Tab" ident="tab"/>
