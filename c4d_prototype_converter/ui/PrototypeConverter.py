@@ -723,7 +723,12 @@ class PrototypeConverter(nr.c4d.ui.Component):
                 'plugin_directory', 'overwrite', 'export_mode'):
       self[key].add_event_listener('value-changed', self.on_change)
     self['get_plugin_id'].add_event_listener('click', self.on_get_plugin_id)
-    self['clear_info'].add_event_listener('click', self.on_clear_info)
+    self['clear_plugin_name'].add_event_listener('click', self._clear_field('plugin_name'))
+    self['clear_plugin_id'].add_event_listener('click', self._clear_field('plugin_id'))
+    self['clear_resource_name'].add_event_listener('click', self._clear_field('resource_name'))
+    self['clear_symbol_prefix'].add_event_listener('click', self._clear_field('symbol_prefix'))
+    self['clear_icon_file'].add_event_listener('click', self._clear_field('icon_file'))
+    self['clear_plugin_directory'].add_event_listener('click', self._clear_field('plugin_directory'))
     super(PrototypeConverter, self).render(dialog)
 
   def init_values(self, dialog):
@@ -765,7 +770,6 @@ class PrototypeConverter(nr.c4d.ui.Component):
     self['symbol_prefix'].set_helptext(cnv.symbol_prefix)
     self['icon_file'].set_helptext(cnv.icon_file)
     self['plugin_directory'].set_helptext(parent)
-    self['clear_info'].enabled = cnv.has_settings()
 
     color = COLOR_RED if not cnv.link else None
     self['source'].previous_sibling.set_color(color)
@@ -794,11 +798,16 @@ class PrototypeConverter(nr.c4d.ui.Component):
   def on_get_plugin_id(self, button):
     webbrowser.open('http://www.plugincafe.com/forum/developer.asp')
 
-  def on_clear_info(self, button):
-    cnv = self.get_converter()
-    if cnv.link:
-      cnv.delete_settings()
-      self.on_change(None)
+  def _clear_field(self, field_name):
+    def worker(item):
+      cnv = self.get_converter()
+      self[field_name].value = ''
+      if cnv.link:
+        cnv.read_from_link()
+        setattr(cnv, field_name, '')
+        cnv.save_to_link()
+        self.on_change(None)
+    return worker
 
 
 window = nr.c4d.ui.DialogWindow(PrototypeConverter(), title='Prototype Converter')

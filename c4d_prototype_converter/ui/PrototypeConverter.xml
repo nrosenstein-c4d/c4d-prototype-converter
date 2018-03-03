@@ -1,8 +1,6 @@
 <Group borderspace="6,6,6,6" cols="1">
   <MenuGroup>
     <MenuGroup name="File">
-      <MenuItem id="clear_info" name="Clear Settings"/>
-      <Separator/>
       <MenuItem plugin="IDM_CM_CLOSEWINDOW"/>
     </MenuGroup>
     <HelpMenu/>
@@ -11,41 +9,60 @@
   <Group layout="fill-x,fit" cols="2">
     <!-- Left part of the dialog that shows the export and plugin options. -->
     <Group layout="fill-x,top" cols="1">
-      <Group layout="fill-x,top" cols="2">
+      <Group layout="fill-x,top" cols="3">
         <Text text="Source *"/>
         <LinkBox id="source"/>
+        <Text/>
+
         <Text text="Plugin Name"/>
         <Input id="plugin_name" type="string" layout="fit-x,middle"/>
+        <Button id="clear_plugin_name" iconid="RESOURCEIMAGE_CLEARSELECTION"/>
+
         <Text text="Plugin ID *"/>
         <Group layout="fill-x,middle">
           <Input id="plugin_id" type="string" minw="120"/>
           <Button id="get_plugin_id" text="Get Plugin ID"/>
         </Group>
+        <Button id="clear_plugin_id" iconid="RESOURCEIMAGE_CLEARSELECTION"/>
+
         <Text text="Resource Name"/>
         <Input id="resource_name" type="string" layout="fit-x,middle"/>
+        <Button id="clear_resource_name" iconid="RESOURCEIMAGE_CLEARSELECTION"/>
+
         <Text text="Symbol Prefix"/>
         <Input id="symbol_prefix" type="string" layout="fit-x,middle"/>
+        <Button id="clear_symbol_prefix" iconid="RESOURCEIMAGE_CLEARSELECTION"/>
+
         <Text text="Icon"/>
         <FileSelector id="icon_file" type="load"/>
+        <Button id="clear_icon_file" iconid="RESOURCEIMAGE_CLEARSELECTION"/>
+
         <Text text="Plugin Directory"/>
         <FileSelector id="plugin_directory" type="directory"/>
+        <Button id="clear_plugin_directory" iconid="RESOURCEIMAGE_CLEARSELECTION"/>
+
         <Text text="Output"/>
         <Quicktab id="export_mode" value="*">
           <Item text="Resource Files" ident="res"/>
           <Item text="Plugin Stub" ident="plugin"/>
           <Item text="Readme" ident="readme"/>
         </Quicktab>
+        <Text/>
+
         <Text text="Resource Symbols"/>
         <Quicktab id="symbol_mode" multiselect="false" value="c4ddev">
           <Item text="Cinema 4D" ident="c4d"/>
           <Item text="C4DDev" ident="c4ddev"/>
         </Quicktab>
+        <Text/>
+
         <Text text="Indentation"/>
         <Quicktab id="indent_mode" multiselect="false" value="4space">
           <Item text="2 Spaces" ident="2space"/>
           <Item text="4 Spaces" ident="4space"/>
           <Item text="Tab" ident="tab"/>
         </Quicktab>
+        <Text/>
       </Group>
     </Group>
 
