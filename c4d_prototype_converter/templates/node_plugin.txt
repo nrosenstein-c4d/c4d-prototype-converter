@@ -34,6 +34,9 @@ res = c4d
 #
 #   See https://github.com/NiklasRosenstein/c4ddev
 class res(object):
+  {%- if not parameters -%}
+  pass
+  {%- endif -%}
   {%- for node, did, bc in parameters -%}
   {{ node['symbol'][0] }} = {{ node['symbol'][1] }}
   {%- for item in (node['cycle_symbols'] or ()) -%}
