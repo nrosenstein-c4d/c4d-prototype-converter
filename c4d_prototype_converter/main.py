@@ -21,7 +21,7 @@
 # SOFTWARE.
 
 import c4d
-from nr.c4d.gui import find_menu_resource
+from nr.c4d.utils import find_menu_resource
 from .ui.ScriptConverter import ID_SCRIPT_CONVERTER
 from .ui.PrototypeConverter import ID_PLUGIN_CONVERTER
 
