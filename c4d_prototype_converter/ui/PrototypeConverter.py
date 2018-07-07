@@ -506,6 +506,9 @@ class Converter(object):
         has_cycle = (dtype == c4d.DTYPE_LONG and cycle)
         multiplier = 100 if (not has_cycle and bc[c4d.DESC_UNIT] == c4d.DESC_UNIT_PERCENT) else 1
 
+        # Note: We do not multiply the DEFAULT property value by the
+        # multiplier, as for the UNIT_PERCENT a DEFAULT of 1 is already
+        # 100%. This is however not the case for MIN/MAX/etc.
         if has_cycle:
           cycle_lines = []
           default_name = None
@@ -518,9 +521,9 @@ class Converter(object):
           if default_name:
             props.append('DEFAULT {};'.format(symbol_map.get_cycle_symbol(node, default_name)))
           elif isinstance(default, int):
-            props.append('DEFAULT {};'.format(int(default * multiplier)))
+            props.append('DEFAULT {};'.format(int(default)))
         elif isinstance(default, (int, float)):
-          props.append('DEFAULT {};'.format(typecast(default * multiplier)))
+          props.append('DEFAULT {};'.format(typecast(default)))
 
         if bc[c4d.DESC_CUSTOMGUI] == c4d.CUSTOMGUI_LONGSLIDER:
           props.append('CUSTOMGUI LONGSLIDER;')

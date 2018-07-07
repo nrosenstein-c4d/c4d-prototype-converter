@@ -93,7 +93,9 @@ created for [Cineversity.com](https://www.cineversity.com/)'s
 
 * Update third-party libraries (`nr.c4d`, `nr.types`, `six`)
 * Make Script Converter and Prototype Convert commands visible in Commander (Shift+C)
+* Fix #48 &ndash; DEFAULT property with UNIT PERCENT does NOT need to be multiplied by 100
 * Fix #49 &ndash; "Animatable" user data parameter - error when OFF
+
 
 #### v1.1.0
 
