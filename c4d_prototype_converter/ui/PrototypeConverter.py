@@ -811,5 +811,5 @@ class PrototypeConverter(nr.c4d.ui.Component):
 
 window = nr.c4d.ui.DialogWindow(PrototypeConverter(), title='Prototype Converter')
 command = nr.c4d.ui.DialogOpenerCommand(ID_PLUGIN_CONVERTER, window)
-command.Register('Prototype Converter...', c4d.PLUGINFLAG_HIDE,
+command.Register('Prototype Converter...', c4d.PLUGINFLAG_HIDEPLUGINMENU,
   icon=res.bitmap(res.local('../icons/prototype_converter.png')))

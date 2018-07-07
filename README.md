@@ -87,6 +87,18 @@ created for [Cineversity.com](https://www.cineversity.com/)'s
 - Programming and Design: [Niklas Rosenstein](https://www.niklasrosenstein.com/)
 - Initial Concept and Design: [Donovan Keith](https://www.donovankeith.com)
 
+### Changes
+
+#### v1.2.0
+
+* Update third-party libraries (`nr.c4d`, `nr.types`, `six`)
+* Make Script Converter and Prototype Convert commands visible in Commander (Shift+C)
+* Fix #49 &ndash; "Animatable" user data parameter - error when OFF
+
+#### v1.1.0
+
+* Initial public release
+
 ---
 
 <p align="center">Copyright &copy 2018 Niklas Rosenstein</p>
