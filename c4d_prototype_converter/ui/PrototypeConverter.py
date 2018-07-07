@@ -490,9 +490,9 @@ class Converter(object):
       default = bc[c4d.DESC_DEFAULT]
 
       if bc[c4d.DESC_ANIMATE] == c4d.DESC_ANIMATE_OFF:
-        props.append('ANIMATE OFF;')
+        props.append('ANIM OFF;')
       elif bc[c4d.DESC_ANIMATE] == c4d.DESC_ANIMATE_MIX:
-        props.append('ANIMATE MIX;')
+        props.append('ANIM MIX;')
 
       if dtype == c4d.DTYPE_BOOL:
         typename = 'BOOL'
