@@ -1,0 +1,14 @@
+{
+  "lib/nr.c4d": {
+    "ref": "5d48504761188ccfa41c9713de33d6c83e67e92e",
+    "url": "https://gitlab.niklasrosenstein.com/NiklasRosenstein/python/nr.c4d.git"
+  },
+  "lib/nr.types": {
+    "ref": "5b789fc5760b3b2afcbcc527d75b03803154be00",
+    "url": "https://gitlab.niklasrosenstein.com/NiklasRosenstein/python/nr.types.git"
+  },
+  "lib/six": {
+    "ref": "8f26110f6c394672855430f9f57bb3ebd2da07cc",
+    "url": "https://github.com/benjaminp/six"
+  }
+}

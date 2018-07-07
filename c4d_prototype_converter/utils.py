@@ -23,7 +23,7 @@
 import errno
 import os
 import weakref
-from nr.generic import Generic
+from nr.types.generic import Generic
 
 
 class nullable_ref(object):

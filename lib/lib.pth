@@ -1,2 +1,3 @@
-py-nr/
-py-nr.c4d/
+nr.c4d/src
+nr.types/src
+six/
