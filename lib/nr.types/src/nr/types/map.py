@@ -316,7 +316,7 @@ class HashDict(generic.Generic['key_hash']):
       return self.key != other.key
 
   def __init__(self):
-    nr.generic.assert_initialized(self)
+    generic.assert_initialized(self)
     self._dict = {}
 
   def __repr__(self):

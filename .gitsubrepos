@@ -4,7 +4,7 @@
     "url": "https://gitlab.niklasrosenstein.com/NiklasRosenstein/python/nr.c4d.git"
   },
   "lib/nr.types": {
-    "ref": "5b789fc5760b3b2afcbcc527d75b03803154be00",
+    "ref": "fd152fe7af0cde0374ccc90e2093be679f9b893d",
     "url": "https://gitlab.niklasrosenstein.com/NiklasRosenstein/python/nr.types.git"
   },
   "lib/six": {
